@@ -1,0 +1,87 @@
+{
+  "name": "electron_demo",
+  "version": "0.0.0",
+  "private": true,
+  "main": "electron/main.mjs",
+  "type": "module",
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "run-p type-check \"build-only {@}\" --",
+    "preview": "vite preview",
+    "build-only": "vite build",
+    "type-check": "vue-tsc --build",
+    "electron:dev": "concurrently -k \"vite\" \"wait-on http://localhost:5173 && electron . --dev\"",
+    "electron:build": "vite build && electron-builder"
+  },
+  "dependencies": {
+    "pinia": "^3.0.3",
+    "vue": "^3.5.22",
+    "vue-router": "^4.6.3",
+    "electron-log": "^5.2.3",
+    "electron-store": "^7.0.3"
+  },
+  "devDependencies": {
+    "@tsconfig/node22": "^22.0.2",
+    "@types/node": "^22.18.11",
+    "@vitejs/plugin-vue": "^6.0.1",
+    "@vue/tsconfig": "^0.8.1",
+    "concurrently": "^9.2.1",
+    "electron": "^38.4.0",
+    "electron-builder": "^26.0.12",
+    "npm-run-all2": "^8.0.4",
+    "typescript": "~5.9.0",
+    "vite": "^7.1.11",
+    "vite-plugin-vue-devtools": "^8.0.3",
+    "vue-tsc": "^3.1.1",
+    "wait-on": "^9.0.1"
+  },
+  "build": {
+    "productName": "electron_demo",
+    "appId": "com.electron_demo",
+    "copyright": "CryMark",
+    "afterPack": "./afterPack.cjs",
+    "files": [
+      "**/*",
+      "!**/.vscode/**",
+      "!**/.git/**",
+      "!**/electron-build/**",
+      "!electron-build/**"
+    ],
+    "asarUnpack": [
+      "icon.ico"
+    ],
+    "directories": {
+      "output": "electron-build"
+    },
+    "asar": true,
+    "extraResources": [
+    ],
+    "nsis": {
+      "oneClick": false,
+      "allowElevation": true,
+      "allowToChangeInstallationDirectory": true,
+      "include": "installer.nsh",
+      "installerIcon": "./icon.ico",
+      "uninstallerIcon": "./icon.ico",
+      "installerHeaderIcon": "./icon.ico",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "electron_demo",
+      "language": "2052"
+    },
+    "win": {
+      "icon": "./icon.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    }
+  }
+}
