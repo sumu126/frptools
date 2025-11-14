@@ -151,7 +151,7 @@ store.set('user.preferences', { theme: 'dark' })
 ## 🚀 部署说明
 
 构建完成后，安装程序位于 `electron-build/` 目录：
-- `electron_demo Setup 0.0.0.exe` - Windows 安装程序
+- `frptools Setup 0.0.0.exe` - Windows 安装程序
 - `win-unpacked/` - 绿色版可执行文件
 
 ## 🤝 贡献指南

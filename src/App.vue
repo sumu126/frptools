@@ -58,14 +58,14 @@ export default {
       try {
         if (window.electronAPI && window.electronAPI.getAppName) {
           const name = await window.electronAPI.getAppName();
-          this.appName = name || 'electron_demo';
+          this.appName = name || 'frptools';
         } else {
           // 如果无法从Electron API获取，则使用默认值
-          this.appName = 'electron_demo';
+          this.appName = 'frptools';
         }
       } catch (error) {
         console.warn('获取应用名称失败，使用默认值:', error);
-        this.appName = 'electron_demo';
+        this.appName = 'frptools';
       }
     },
     handleMinimize() {

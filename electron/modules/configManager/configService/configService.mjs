@@ -41,13 +41,13 @@ class ConfigService {
             
             if (fs.existsSync(packagePath)) {
                 const packageData = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
-                return packageData.name || 'electron_demo';
+                return packageData.name || 'frptools';
             }
         } catch (error) {
             console.warn('从package.json获取应用名称失败:', error);
         }
         
-        return 'electron_demo';
+        return 'frptools';
     }
 }
 

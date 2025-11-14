@@ -1,5 +1,5 @@
 {
-  "name": "electron_demo",
+  "name": "frptools",
   "version": "0.0.0",
   "private": true,
   "main": "electron/main.mjs",
@@ -39,8 +39,8 @@
     "wait-on": "^9.0.1"
   },
   "build": {
-    "productName": "electron_demo",
-    "appId": "com.electron_demo",
+    "productName": "frptools",
+    "appId": "com.frptools",
     "copyright": "CryMark",
     "afterPack": "./afterPack.cjs",
     "files": [
@@ -69,7 +69,7 @@
       "installerHeaderIcon": "./icon.ico",
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "electron_demo",
+      "shortcutName": "frptools",
       "language": "2052"
     },
     "win": {

@@ -1,122 +1,195 @@
 <template>
-  <div class="home-container">
-    <h1>{{ appName }}</h1>
-    <p>这是一个使用自定义标题栏的 Electron 应用</p>
-    
-    <div class="controls">
-      <div class="control-group">
-        <label>应用名称:</label>
-        <input v-model="appNameInput" @input="updateAppName" type="text">
+  <div class="layout-container">
+    <!-- 左侧导航栏 -->
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <h2>{{ appName }}</h2>
       </div>
-      
-      <div class="control-group">
-        <label>主题:</label>
-        <select v-model="theme" @change="updateTheme">
-          <option value="dark">深色</option>
-          <option value="light">浅色</option>
-          <option value="blue">蓝色</option>
-          <option value="dynamic">动态呼吸灯</option>
-          <option value="pink-gradient">粉色</option>
-          <option value="purple">紫色</option>
-          <option value="green">绿色</option>
-        </select>
-      </div>
+      <nav class="sidebar-nav">
+        <ul>
+          <li 
+            v-for="item in navItems" 
+            :key="item.id"
+            :class="{ active: activeNav === item.id }"
+            @click="switchNav(item.id)"
+          >
+            <span class="nav-icon">{{ item.icon }}</span>
+            <span class="nav-text">{{ item.text }}</span>
+          </li>
+        </ul>
+      </nav>
+    </div>
+
+    <!-- 右侧内容区域 -->
+    <div class="content-area">
+      <!-- 客户端设置页面 -->
+      <ClientSettingsPage 
+        v-if="activeNav === 'client-settings'" 
+      />
+
+      <!-- 服务端设置页面 -->
+      <ServerSettingsPage 
+        v-if="activeNav === 'server-settings'" 
+      />
+
+      <!-- 设置页面 -->
+      <SettingsPage 
+        v-if="activeNav === 'settings'" 
+        :current-theme="theme"
+        @update-theme="handleThemeUpdate"
+      />
+
+      <!-- 关于页面 -->
+      <AboutPage 
+        v-if="activeNav === 'about'" 
+        :app-name="appName"
+      />
     </div>
   </div>
 </template>
 
 <script>
+import SettingsPage from './SettingsPage.vue'
+import AboutPage from './AboutPage.vue'
+import ClientSettingsPage from './ClientSettingsPage.vue'
+import ServerSettingsPage from './ServerSettingsPage.vue'
+
 export default {
   name: 'HomeView',
+  components: {
+    SettingsPage,
+    AboutPage,
+    ClientSettingsPage,
+    ServerSettingsPage
+  },
   data() {
     return {
-      appName: '加载中...', // 初始显示加载状态
-      appNameInput: '', // 用于输入框的独立数据
-      theme: 'dark'
+      appName: '加载中...',
+      theme: 'dark',
+      activeNav: 'home',
+      navItems: [
+        { id: 'client-settings', text: '隧道管理', icon: '💻' },
+        { id: 'server-settings', text: '服务管理', icon: '🌐' },
+        { id: 'settings', text: '设置', icon: '⚙️' },
+        { id: 'about', text: '关于', icon: 'ℹ️' }
+      ]
     }
   },
   async mounted() {
-    // 异步获取应用名称
     await this.loadAppName();
-    
-    // 设置输入框的初始值
-    this.appNameInput = this.appName;
-    
-    // 组件挂载时，通知父组件初始值
     this.updateAppName();
     this.updateTheme();
   },
   methods: {
     async loadAppName() {
       try {
-        // 从package.json中获取应用名称，如果获取失败则使用默认值
         if (window.electronAPI && window.electronAPI.getAppName) {
           const name = await window.electronAPI.getAppName();
-          this.appName = name || 'electron_demo';
+          this.appName = name || 'frptools';
         } else {
-          // 如果无法从Electron API获取，则使用默认值
-          this.appName = 'electron_demo';
+          this.appName = 'frptools';
         }
       } catch (error) {
         console.warn('获取应用名称失败，使用默认值:', error);
-        this.appName = 'electron_demo';
+        this.appName = 'frptools';
       }
     },
     updateAppName() {
-      // 更新显示的应用名称
-      this.appName = this.appNameInput;
-      
-      // 通过事件总线发送应用名称更新事件
       window.dispatchEvent(new CustomEvent('update-app-name', { 
         detail: { appName: this.appName } 
       }));
     },
     updateTheme() {
-      // 通过事件总线发送主题更新事件
       window.dispatchEvent(new CustomEvent('update-theme', { 
         detail: { theme: this.theme } 
       }));
+    },
+    switchNav(navId) {
+      this.activeNav = navId;
+    },
+    handleAppNameUpdate(newAppName) {
+      this.appName = newAppName;
+      this.updateAppName();
+    },
+    handleThemeUpdate(newTheme) {
+      this.theme = newTheme;
+      this.updateTheme();
     }
   }
 }
 </script>
 
 <style scoped>
-.home-container {
-  padding: 20px;
+.layout-container {
+  display: flex;
   height: 100%;
+  overflow: hidden;
+}
+
+/* 左侧导航栏样式 */
+.sidebar {
+  width: 250px;
+  background: #2c3e50;
+  color: white;
   display: flex;
   flex-direction: column;
+  border-right: 1px solid #34495e;
 }
 
-h1 {
-  margin-bottom: 10px;
+.sidebar-header {
+  padding: 20px;
+  border-bottom: 1px solid #34495e;
+  text-align: center;
 }
 
-p {
-  margin-bottom: 20px;
-  color: #666;
+.sidebar-header h2 {
+  margin: 0;
+  font-size: 1.2em;
+  font-weight: 600;
 }
 
-.controls {
-  margin-top: 20px;
+.sidebar-nav {
+  flex: 1;
+  padding: 10px 0;
 }
 
-.control-group {
-  margin-bottom: 15px;
+.sidebar-nav ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
 }
 
-.control-group label {
-  display: block;
-  margin-bottom: 5px;
-  font-weight: bold;
+.sidebar-nav li {
+  padding: 12px 20px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
-.control-group input,
-.control-group select {
-  padding: 8px 12px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  width: 200px;
+.sidebar-nav li:hover {
+  background-color: #34495e;
+}
+
+.sidebar-nav li.active {
+  background-color: #3498db;
+  border-right: 3px solid #2980b9;
+}
+
+.nav-icon {
+  font-size: 1.2em;
+}
+
+.nav-text {
+  font-size: 0.95em;
+  font-weight: 500;
+}
+
+/* 右侧内容区域样式 */
+.content-area {
+  flex: 1;
+  overflow-y: auto;
+  background: #ecf0f1;
 }
 </style>
