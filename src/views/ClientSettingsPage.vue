@@ -112,6 +112,11 @@
           </div>
           
           <div class="form-group">
+            <label>远程开放端口:</label>
+            <input v-model="tunnelForm.remotePort" type="number" placeholder="8080" min="1" max="65535">
+          </div>
+          
+          <div class="form-group">
             <label>协议类型:</label>
             <select v-model="tunnelForm.protocol">
               <option value="tcp">TCP</option>
@@ -188,6 +193,7 @@ export default {
         name: '',
         localAddress: '',
         remoteAddress: '',
+        remotePort: '',
         protocol: 'tcp',
         authType: 'none',
         authKey: ''
@@ -210,6 +216,7 @@ export default {
         name: '',
         localAddress: '',
         remoteAddress: '',
+        remotePort: '',
         protocol: 'tcp',
         authType: 'none',
         authKey: ''
@@ -232,7 +239,7 @@ export default {
     },
     
     saveTunnel() {
-      if (!this.tunnelForm.name || !this.tunnelForm.localAddress || !this.tunnelForm.remoteAddress) {
+      if (!this.tunnelForm.name || !this.tunnelForm.localAddress || !this.tunnelForm.remoteAddress || !this.tunnelForm.remotePort) {
         this.$notify({
           title: '输入错误',
           message: '请填写完整的隧道信息',
