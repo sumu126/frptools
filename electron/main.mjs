@@ -18,9 +18,9 @@ app.whenReady().then(() =>{
   if (!gotTheLock) {
       quitApp();
   }
+  initializeControllers(mainPage);
   mainPage = createMainWindow();
   tray = setupTray(mainPage, quitApp);
-  initializeControllers(mainPage);
 });
 
 app.on('window-all-closed', () => {
