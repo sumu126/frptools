@@ -1,5 +1,8 @@
 {
   "name": "frptools",
+  "description": "更好的frp工具",
+  "author": "-",
+  "homepage": "-",
   "version": "0.0.0",
   "private": true,
   "main": "electron/main.mjs",
@@ -14,7 +17,8 @@
     "build-only": "vite build",
     "type-check": "vue-tsc --build",
     "electron:dev": "concurrently -k \"vite\" \"wait-on http://localhost:5173 && electron . --dev\"",
-    "electron:build": "vite build && electron-builder"
+    "electron:build": "vite build && electron-builder --win",
+    "electron:build:deb": "vite build && electron-builder --linux"
   },
   "dependencies": {
     "electron-log": "^5.2.3",
@@ -52,7 +56,8 @@
       "!electron-build/**"
     ],
     "asarUnpack": [
-      "icon.ico"
+      "icon.ico",
+      "icon256.ico"
     ],
     "directories": {
       "output": "electron-build"
@@ -83,13 +88,16 @@
       }
     },
     "linux": {
+      "icon": "./icon256.png",
       "target": {
         "target": "deb",
-        "arch": "arm64"
+        "arch": [
+          "x64",
+          "ia32"
+        ]
       },
       "maintainer": "-",
-      "category": "Utility",
-      "icon": "./icon.ico"
+      "category": "Utility"
     },
     "deb":{
       "afterInstall": "./DEBIAN/postinst.sh"
