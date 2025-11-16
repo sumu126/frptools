@@ -18,8 +18,8 @@ app.whenReady().then(() =>{
   if (!gotTheLock) {
       quitApp();
   }
-  initializeControllers(mainPage);
   mainPage = createMainWindow();
+  initializeControllers(mainPage);
   tray = setupTray(mainPage, quitApp);
 });
 
