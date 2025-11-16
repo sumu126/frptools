@@ -34,28 +34,26 @@ class TunnelService {
   }
 
   /**
-   * 解析本地地址，提取协议和端口
+   * 解析本地地址，提取纯IP和端口
    * @param {string} localAddress 本地地址，格式如 "tcp://127.0.0.1:8080" 或 "127.0.0.1:8080"
-   * @returns {Object} 包含location和prot的对象
+   * @returns {Object} 包含纯IP地址和端口号的对象
    */
   parseLocalAddress(localAddress) {
-    // 如果没有协议前缀，默认为tcp
-    if (!localAddress.includes('://')) {
-      localAddress = 'tcp://' + localAddress;
+    // 移除协议前缀（如果有）
+    let addressWithoutProtocol = localAddress;
+    if (localAddress.includes('://')) {
+      const parts = localAddress.split('://');
+      addressWithoutProtocol = parts[1] || '';
     }
     
-    const parts = localAddress.split('://');
-    const protocol = parts[0];
-    const address = parts[1] || '';
-    
-    // 分割地址和端口
-    const addressParts = address.split(':');
-    const location = addressParts[0] + ':' + (addressParts[1] || '');
-    const prot = addressParts[1] || '';
+    // 分割IP和端口
+    const addressParts = addressWithoutProtocol.split(':');
+    const location = addressParts[0]; // 纯IP地址，不包含端口
+    const prot = addressParts[1] || ''; // 纯端口号
     
     return {
-      location: location,
-      prot: prot
+      location: location,  // 纯IP地址，如 "127.0.0.1"
+      prot: prot          // 纯端口号，如 "8080"
     };
   }
 
@@ -80,14 +78,16 @@ class TunnelService {
     
     // 解析本地地址
     const localAddressParsed = this.parseLocalAddress(tunnelData.localAddress);
+    // 解析远程地址
+    const remoteAddressParsed = this.parseRemoteAddress(tunnelData.remoteAddress);
     
     // 构建符合要求的JSON数据结构
     const tunnelJson = {
       frp: tunnelData.name,
-      location: tunnelData.localAddress,
-      prot: localAddressParsed.prot,
-      yclocation: tunnelData.remoteAddress,
-      ycprot: this.parseRemoteAddress(tunnelData.remoteAddress).prot,
+      location: localAddressParsed.location,  // 纯IP地址
+      prot: localAddressParsed.prot,           // 纯端口号
+      yclocation: remoteAddressParsed.yclocation,  // 纯IP地址
+      ycprot: remoteAddressParsed.ycprot,          // 纯端口号
       yckfprot: tunnelData.remotePort,
       frptype: tunnelData.protocol,
       token: tunnelData.authType !== 'none' ? (tunnelData.authKey || '') : ''
@@ -108,15 +108,26 @@ class TunnelService {
   }
 
   /**
-   * 解析远程地址
+   * 解析远程地址，提取纯IP和端口
    * @param {string} remoteAddress 远程地址
-   * @returns {Object} 包含yclocation和ycprot的对象
+   * @returns {Object} 包含纯IP地址和端口号的对象
    */
   parseRemoteAddress(remoteAddress) {
-    const parts = remoteAddress.split(':');
+    // 移除协议前缀（如果有）
+    let addressWithoutProtocol = remoteAddress;
+    if (remoteAddress.includes('://')) {
+      const parts = remoteAddress.split('://');
+      addressWithoutProtocol = parts[1] || '';
+    }
+    
+    // 分割IP和端口
+    const addressParts = addressWithoutProtocol.split(':');
+    const yclocation = addressParts[0]; // 纯IP地址
+    const ycprot = addressParts[1] || ''; // 纯端口号
+    
     return {
-      yclocation: parts[0] || '',
-      ycprot: parts[1] || ''
+      yclocation: yclocation,  // 纯IP地址
+      ycprot: ycprot          // 纯端口号
     };
   }
 
@@ -134,14 +145,16 @@ class TunnelService {
     
     // 解析本地地址
     const localAddressParsed = this.parseLocalAddress(updateData.localAddress || tunnels[index].localAddress);
+    // 解析远程地址
+    const remoteAddressParsed = this.parseRemoteAddress(updateData.remoteAddress || tunnels[index].remoteAddress);
     
     // 构建JSON数据结构
     const tunnelJson = {
       frp: updateData.name || tunnels[index].name,
-      location: updateData.localAddress || tunnels[index].localAddress,
-      prot: localAddressParsed.prot,
-      yclocation: updateData.remoteAddress || tunnels[index].remoteAddress,
-      ycprot: this.parseRemoteAddress(updateData.remoteAddress || tunnels[index].remoteAddress).prot,
+      location: localAddressParsed.location,      // 纯IP地址
+      prot: localAddressParsed.prot,               // 纯端口号
+      yclocation: remoteAddressParsed.yclocation,  // 纯IP地址
+      ycprot: remoteAddressParsed.ycprot,          // 纯端口号
       yckfprot: updateData.remotePort || tunnels[index].remotePort,
       frptype: updateData.protocol || tunnels[index].protocol,
       token: (updateData.authType || tunnels[index].authType) !== 'none' ? (updateData.authKey || tunnels[index].authKey || '') : ''
