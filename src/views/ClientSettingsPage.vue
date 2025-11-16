@@ -200,7 +200,57 @@ export default {
       }
     }
   },
+  data() {
+    return {
+      tunnels: [],
+      showEditModal: false,
+      editingTunnel: null,
+      tunnelForm: {
+        name: '',
+        localAddress: '',
+        remoteAddress: '',
+        remotePort: '',
+        protocol: 'tcp',
+        authType: 'none',
+        authKey: ''
+      }
+    }
+  },
+  async mounted() {
+    await this.loadTunnels()
+  },
   methods: {
+    // 显示通知的通用方法
+    showNotification(title, message, type = 'info') {
+      // 使用浏览器原生通知作为备选方案
+      if (window.Notification && Notification.permission === 'granted') {
+        new Notification(title, {
+          body: message,
+          icon: '/favicon.ico'
+        })
+      } else {
+        // 使用console作为备选
+        console.log(`[${type.toUpperCase()}] ${title}: ${message}`)
+        // 也可以考虑使用alert作为最后的备选
+        if (type === 'error') {
+          alert(`${title}: ${message}`)
+        }
+      }
+    },
+    // 加载隧道数据
+    async loadTunnels() {
+      try {
+        const result = await window.electronAPI.tunnel.getAll()
+        if (result.error) {
+          console.error('加载隧道失败:', result.error)
+          return
+        }
+        this.tunnels = result
+      } catch (error) {
+        console.error('加载隧道失败:', error)
+      }
+    },
+    
     getStatusText(status) {
       const statusMap = {
         running: '运行中',
@@ -238,74 +288,90 @@ export default {
       this.editingTunnel = null
     },
     
-    saveTunnel() {
+    async saveTunnel() {
       if (!this.tunnelForm.name || !this.tunnelForm.localAddress || !this.tunnelForm.remoteAddress || !this.tunnelForm.remotePort) {
-        this.$notify({
-          title: '输入错误',
-          message: '请填写完整的隧道信息',
-          type: 'error'
-        })
+        this.showNotification('输入错误', '请填写完整的隧道信息', 'error')
         return
       }
       
-      if (this.editingTunnel) {
-        // 更新现有隧道
-        const index = this.tunnels.findIndex(t => t.id === this.editingTunnel.id)
-        if (index !== -1) {
-          this.tunnels[index] = { ...this.tunnelForm, id: this.editingTunnel.id }
+      try {
+        let result
+        // 创建可序列化的数据副本
+        const serializableData = JSON.parse(JSON.stringify(this.tunnelForm))
+        
+        if (this.editingTunnel) {
+          // 更新现有隧道
+          result = await window.electronAPI.tunnel.update(this.editingTunnel.id, serializableData)
+        } else {
+          // 添加新隧道
+          result = await window.electronAPI.tunnel.add(serializableData)
         }
-      } else {
-        // 添加新隧道
-        const newTunnel = {
-          ...this.tunnelForm,
-          id: Math.max(...this.tunnels.map(t => t.id)) + 1,
-          status: 'stopped',
-          createdAt: new Date().toLocaleString()
+        
+        if (result.error) {
+          console.error('保存隧道失败:', result.error)
+          this.showNotification('保存失败', result.error, 'error')
+          return
         }
-        this.tunnels.push(newTunnel)
-      }
-      
-      this.closeModal()
-      this.$notify({
-        title: '保存成功',
-        message: `隧道"${this.tunnelForm.name}"已保存`,
-        type: 'success'
-      })
-    },
-    
-    startTunnel(tunnelId) {
-      const tunnel = this.tunnels.find(t => t.id === tunnelId)
-      if (tunnel) {
-        tunnel.status = 'running'
-        this.$notify({
-          title: '隧道启动',
-          message: `隧道"${tunnel.name}"已启动`,
-          type: 'success'
-        })
+        
+        await this.loadTunnels()
+        this.closeModal()
+        this.showNotification('保存成功', `隧道"${this.tunnelForm.name}"已保存`, 'success')
+      } catch (error) {
+        console.error('保存隧道失败:', error)
+        this.showNotification('保存失败', error.message, 'error')
       }
     },
     
-    stopTunnel(tunnelId) {
-      const tunnel = this.tunnels.find(t => t.id === tunnelId)
-      if (tunnel) {
-        tunnel.status = 'stopped'
-        this.$notify({
-          title: '隧道停止',
-          message: `隧道"${tunnel.name}"已停止`,
-          type: 'warning'
-        })
+    async startTunnel(tunnelId) {
+      try {
+        const result = await window.electronAPI.tunnel.start(tunnelId)
+        if (result.error) {
+          console.error('启动隧道失败:', result.error)
+          this.showNotification('启动失败', result.error, 'error')
+          return
+        }
+        await this.loadTunnels()
+        const tunnel = this.tunnels.find(t => t.id === tunnelId)
+        this.showNotification('隧道启动', `隧道"${tunnel.name}"已启动`, 'success')
+      } catch (error) {
+        console.error('启动隧道失败:', error)
+        this.showNotification('启动失败', error.message, 'error')
       }
     },
     
-    deleteTunnel(tunnelId) {
+    async stopTunnel(tunnelId) {
+      try {
+        const result = await window.electronAPI.tunnel.stop(tunnelId)
+        if (result.error) {
+          console.error('停止隧道失败:', result.error)
+          this.showNotification('停止失败', result.error, 'error')
+          return
+        }
+        await this.loadTunnels()
+        const tunnel = this.tunnels.find(t => t.id === tunnelId)
+        this.showNotification('隧道停止', `隧道"${tunnel.name}"已停止`, 'warning')
+      } catch (error) {
+        console.error('停止隧道失败:', error)
+        this.showNotification('停止失败', error.message, 'error')
+      }
+    },
+    
+    async deleteTunnel(tunnelId) {
       const tunnel = this.tunnels.find(t => t.id === tunnelId)
       if (tunnel && confirm(`确定要删除隧道"${tunnel.name}"吗？`)) {
-        this.tunnels = this.tunnels.filter(t => t.id !== tunnelId)
-        this.$notify({
-          title: '删除成功',
-          message: `隧道"${tunnel.name}"已删除`,
-          type: 'info'
-        })
+        try {
+          const result = await window.electronAPI.tunnel.delete(tunnelId)
+          if (result.error) {
+            console.error('删除隧道失败:', result.error)
+            this.showNotification('删除失败', result.error, 'error')
+            return
+          }
+          await this.loadTunnels()
+          this.showNotification('删除成功', `隧道"${tunnel.name}"已删除`, 'info')
+        } catch (error) {
+          console.error('删除隧道失败:', error)
+          this.showNotification('删除失败', error.message, 'error')
+        }
       }
     }
   }

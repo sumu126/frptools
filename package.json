@@ -24,6 +24,7 @@
     "electron-log": "^5.2.3",
     "electron-store": "^7.0.3",
     "electron-util": "^1.0.0",
+    "element-plus": "^2.11.8",
     "pinia": "^3.0.3",
     "vue": "^3.5.22",
     "vue-router": "^4.6.3"
@@ -99,7 +100,7 @@
       "maintainer": "-",
       "category": "Utility"
     },
-    "deb":{
+    "deb": {
       "afterInstall": "./DEBIAN/postinst.sh"
     }
   }
