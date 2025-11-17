@@ -35,5 +35,7 @@ electron-build
 /cypress/videos/
 /cypress/screenshots/
 
+tunnel_*.toml
+frps_*.toml
 # Vitest
 __screenshots__/
