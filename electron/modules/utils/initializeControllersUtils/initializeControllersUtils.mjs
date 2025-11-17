@@ -2,6 +2,7 @@ import { windowsController } from '../../windowsManager/windowsController/window
 import { dialogController } from '../../dialog/dialogController/dialogController.mjs';
 import { configController } from '../../configManager/configController/configController.mjs';
 import { tunnelController } from '../../frps/Controller/tunnelController.mjs';
+import { frpsConfigController } from '../../frps/Controller/frpsConfigController.mjs';
 
 /**
  * 初始化所有控制器
@@ -12,5 +13,6 @@ function initializeControllers(mainPage) {
     dialogController(mainPage);
     configController();
     tunnelController();
+    frpsConfigController(mainPage);
 }
 export { initializeControllers };

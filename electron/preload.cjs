@@ -32,5 +32,19 @@ contextBridge.exposeInMainWorld('electronAPI', {
       export: () => ipcRenderer.invoke('tunnel:export'),
       import: (tunnelConfigs) => ipcRenderer.invoke('tunnel:import', tunnelConfigs),
       getJsonConfig: (id) => ipcRenderer.invoke('tunnel:getJsonConfig', id)
-    }
+    },
+  // FRPS配置管理
+  frpsConfig: {
+    getAll: () => ipcRenderer.invoke('frpsConfig:getAll'),
+    getById: (id) => ipcRenderer.invoke('frpsConfig:getById', id),
+    add: (configData) => ipcRenderer.invoke('frpsConfig:add', configData),
+    update: (id, updateData) => ipcRenderer.invoke('frpsConfig:update', id, updateData),
+    delete: (id) => ipcRenderer.invoke('frpsConfig:delete', id),
+    validate: (configData) => ipcRenderer.invoke('frpsConfig:validate', configData),
+    getTomlContent: (id) => ipcRenderer.invoke('frpsConfig:getTomlContent', id),
+    start: (id) => ipcRenderer.invoke('frpsConfig:start', id),
+    stop: (id) => ipcRenderer.invoke('frpsConfig:stop', id),
+    restart: (id) => ipcRenderer.invoke('frpsConfig:restart', id),
+    getStatus: (id) => ipcRenderer.invoke('frpsConfig:getStatus', id)
+  }
 })

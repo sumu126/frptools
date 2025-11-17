@@ -1,181 +1,104 @@
 <template>
-  <div class="content-section">
+  <div class="server-settings-page">
     <div class="page-header">
-      <h1>服务管理</h1>
-      <p>管理您的服务实例和配置</p>
-      <button class="btn btn-primary" @click="addNewService">
-        <span class="btn-icon">+</span>
-        创建新服务
+      <h2>FRPS服务器配置管理</h2>
+      <button class="btn btn-primary" @click="addNewConfig">
+        <i class="fas fa-plus"></i> 添加配置
       </button>
     </div>
-    
-    <!-- 服务列表 -->
-    <div class="services-grid">
-      <div 
-        v-for="service in services" 
-        :key="service.id"
-        class="service-card"
-        :class="{ active: service.status === 'running' }"
-      >
-        <div class="card-header">
-          <h3>{{ service.name }}</h3>
-          <div class="status-indicator" :class="service.status">
-            <span class="status-dot"></span>
-            <span class="status-text">{{ getStatusText(service.status) }}</span>
+
+    <div class="configs-list">
+      <div v-for="config in configs" :key="config.id" class="config-card">
+        <div class="config-header">
+          <div class="config-info">
+            <h3>{{ config.name }}</h3>
+            <div class="config-details">
+              <span class="port-info">监听端口: {{ config.bindPort }}</span>
+              <span class="auth-info">认证方式: {{ getAuthMethodText(config.authMethod) }}</span>
+              <span class="status" :class="config.status">
+                {{ getStatusText(config.status) }}
+              </span>
+            </div>
+          </div>
+          <div class="config-actions">
+            <button v-if="config.status === 'stopped'" class="btn btn-success" @click="startConfig(config.id)">
+              <i class="fas fa-play"></i> 启动
+            </button>
+            <button v-if="config.status === 'running'" class="btn btn-warning" @click="stopConfig(config.id)">
+              <i class="fas fa-stop"></i> 停止
+            </button>
+            <button class="btn btn-info" @click="viewTomlContent(config.id)">
+              <i class="fas fa-code"></i> 查看配置
+            </button>
+            <button class="btn btn-secondary" @click="editConfig(config.id)">
+              <i class="fas fa-edit"></i> 编辑
+            </button>
+            <button class="btn btn-danger" @click="deleteConfig(config.id)">
+              <i class="fas fa-trash"></i> 删除
+            </button>
           </div>
         </div>
-        
-        <div class="service-info">
-          <div class="info-item">
-            <span class="label">监听地址:</span>
-            <span class="value">{{ service.listenAddress }}</span>
-          </div>
-          <div class="info-item">
-            <span class="label">服务类型:</span>
-            <span class="value type">{{ service.type }}</span>
-          </div>
-          <div class="info-item">
-            <span class="label">协议:</span>
-            <span class="value protocol">{{ service.protocol }}</span>
-          </div>
-          <div class="info-item">
-            <span class="label">连接数:</span>
-            <span class="value">{{ service.connections }}</span>
-          </div>
-          <div class="info-item">
-            <span class="label">CPU使用:</span>
-            <span class="value">{{ service.cpuUsage }}%</span>
-          </div>
-          <div class="info-item">
-            <span class="label">内存使用:</span>
-            <span class="value">{{ service.memoryUsage }}MB</span>
-          </div>
-        </div>
-        
-        <div class="card-actions">
-          <button 
-            v-if="service.status === 'stopped'" 
-            class="btn btn-success btn-sm"
-            @click="startService(service.id)"
-          >
-            <span class="btn-icon">▶</span>
-            启动
-          </button>
-          <button 
-            v-else 
-            class="btn btn-danger btn-sm"
-            @click="stopService(service.id)"
-          >
-            <span class="btn-icon">⏹</span>
-            停止
-          </button>
-          <button 
-            class="btn btn-outline btn-sm"
-            @click="editService(service.id)"
-          >
-            <span class="btn-icon">✏️</span>
-            编辑
-          </button>
-          <button 
-            class="btn btn-outline btn-sm"
-            @click="restartService(service.id)"
-          >
-            <span class="btn-icon">🔄</span>
-            重启
-          </button>
-          <button 
-            class="btn btn-outline btn-sm"
-            @click="deleteService(service.id)"
-          >
-            <span class="btn-icon">🗑️</span>
-            删除
-          </button>
-        </div>
-      </div>
-      
-      <!-- 添加新服务卡片 -->
-      <div class="service-card add-new-card" @click="addNewService">
-        <div class="add-new-content">
-          <span class="add-icon">+</span>
-          <span class="add-text">创建新服务</span>
+        <div class="config-meta">
+          <span>创建时间: {{ formatDate(config.createdAt) }}</span>
+          <span v-if="config.updatedAt">更新时间: {{ formatDate(config.updatedAt) }}</span>
         </div>
       </div>
     </div>
-    
-    <!-- 服务编辑模态框 -->
-    <div v-if="showEditModal" class="modal-overlay">
-      <div class="modal-content">
+
+    <!-- 配置编辑模态框 -->
+    <div v-if="showEditModal" class="modal-overlay" @click="closeModal">
+      <div class="modal-content" @click.stop>
         <div class="modal-header">
-          <h3>{{ editingService ? '编辑服务' : '创建新服务' }}</h3>
-          <button class="modal-close" @click="closeModal">×</button>
+          <h3>{{ editingConfig ? '编辑FRPS配置' : '添加FRPS配置' }}</h3>
+          <button class="close-btn" @click="closeModal">&times;</button>
         </div>
         
         <div class="modal-body">
           <div class="form-group">
-            <label>服务名称:</label>
-            <input v-model="serviceForm.name" type="text" placeholder="输入服务名称">
+            <label>配置名称:</label>
+            <input v-model="configForm.name" type="text" placeholder="输入配置名称">
           </div>
           
           <div class="form-group">
-            <label>服务类型:</label>
-            <select v-model="serviceForm.type">
-              <option value="web">Web服务</option>
-              <option value="api">API服务</option>
-              <option value="database">数据库服务</option>
-              <option value="file">文件服务</option>
-              <option value="proxy">代理服务</option>
+            <label>监听端口:</label>
+            <input v-model="configForm.bindPort" type="number" placeholder="7000" min="1" max="65535">
+          </div>
+          
+          <div class="form-group">
+            <label>认证方式:</label>
+            <select v-model="configForm.authMethod">
+              <option value="none">无认证</option>
+              <option value="token">Token认证</option>
             </select>
           </div>
           
-          <div class="form-group">
-            <label>监听地址:</label>
-            <input v-model="serviceForm.listenAddress" type="text" placeholder="0.0.0.0:8080">
-          </div>
-          
-          <div class="form-group">
-            <label>协议类型:</label>
-            <select v-model="serviceForm.protocol">
-              <option value="http">HTTP</option>
-              <option value="https">HTTPS</option>
-              <option value="tcp">TCP</option>
-              <option value="udp">UDP</option>
-              <option value="websocket">WebSocket</option>
-            </select>
-          </div>
-          
-          <div class="form-group">
-            <label>最大连接数:</label>
-            <input v-model="serviceForm.maxConnections" type="number" min="1" max="10000" placeholder="1000">
-          </div>
-          
-          <div class="form-group">
-            <label>启用SSL:</label>
-            <label class="checkbox-label">
-              <input type="checkbox" v-model="serviceForm.enableSSL"> 启用HTTPS加密
-            </label>
-          </div>
-          
-          <div v-if="serviceForm.enableSSL" class="form-group">
-            <label>SSL证书路径:</label>
-            <input v-model="serviceForm.sslCertPath" type="text" placeholder="/path/to/cert.pem">
-          </div>
-          
-          <div class="form-group">
-            <label>启用认证:</label>
-            <label class="checkbox-label">
-              <input type="checkbox" v-model="serviceForm.enableAuth"> 启用用户认证
-            </label>
-          </div>
-          
-          <div class="form-group">
-            <label>服务描述:</label>
-            <textarea v-model="serviceForm.description" placeholder="输入服务描述信息" rows="3"></textarea>
+          <div v-if="configForm.authMethod === 'token'" class="form-group">
+            <label>认证令牌:</label>
+            <input v-model="configForm.authToken" type="text" placeholder="输入认证令牌">
           </div>
         </div>
         
         <div class="modal-footer">
           <button class="btn btn-secondary" @click="closeModal">取消</button>
-          <button class="btn btn-primary" @click="saveService">保存</button>
+          <button class="btn btn-primary" @click="saveConfig">保存</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TOML内容查看模态框 -->
+    <div v-if="showTomlModal" class="modal-overlay" @click="closeTomlModal">
+      <div class="modal-content toml-modal" @click.stop>
+        <div class="modal-header">
+          <h3>frps.toml 配置内容</h3>
+          <button class="close-btn" @click="closeTomlModal">&times;</button>
+        </div>
+        
+        <div class="modal-body">
+          <pre class="toml-content">{{ tomlContent }}</pre>
+        </div>
+        
+        <div class="modal-footer">
+          <button class="btn btn-secondary" @click="closeTomlModal">关闭</button>
         </div>
       </div>
     </div>
@@ -187,78 +110,39 @@ export default {
   name: 'ServerSettingsPage',
   data() {
     return {
-      services: [
-        {
-          id: 1,
-          name: 'Web服务器',
-          type: 'web',
-          listenAddress: '0.0.0.0:8080',
-          protocol: 'http',
-          status: 'running',
-          connections: 156,
-          cpuUsage: 12.5,
-          memoryUsage: 128.3,
-          maxConnections: 1000,
-          enableSSL: false,
-          enableAuth: true,
-          description: '主要Web应用服务',
-          createdAt: '2024-01-15 10:30:00'
-        },
-        {
-          id: 2,
-          name: 'API网关',
-          type: 'api',
-          listenAddress: '0.0.0.0:3000',
-          protocol: 'https',
-          status: 'running',
-          connections: 89,
-          cpuUsage: 8.2,
-          memoryUsage: 64.7,
-          maxConnections: 500,
-          enableSSL: true,
-          enableAuth: true,
-          description: 'API接口网关服务',
-          createdAt: '2024-01-10 14:20:00'
-        },
-        {
-          id: 3,
-          name: '文件服务',
-          type: 'file',
-          listenAddress: '0.0.0.0:9000',
-          protocol: 'http',
-          status: 'stopped',
-          connections: 0,
-          cpuUsage: 0,
-          memoryUsage: 0,
-          maxConnections: 200,
-          enableSSL: false,
-          enableAuth: false,
-          description: '文件上传下载服务',
-          createdAt: '2024-01-08 09:15:00'
-        }
-      ],
+      configs: [],
       showEditModal: false,
-      editingService: null,
-      serviceForm: {
+      showTomlModal: false,
+      editingConfig: null,
+      tomlContent: '',
+      configForm: {
         name: '',
-        type: 'web',
-        listenAddress: '',
-        protocol: 'http',
-        maxConnections: 1000,
-        enableSSL: false,
-        sslCertPath: '',
-        enableAuth: false,
-        description: ''
+        bindPort: 7000,
+        authMethod: 'none',
+        authToken: ''
       }
     }
   },
   mounted() {
-    this.startServiceMonitoring();
-  },
-  beforeUnmount() {
-    this.stopServiceMonitoring();
+    this.loadConfigs()
   },
   methods: {
+    async loadConfigs() {
+      try {
+        this.configs = await window.electronAPI.frpsConfig.getAll()
+      } catch (error) {
+        this.showNotification('加载配置失败', error.message, 'error')
+      }
+    },
+
+    getAuthMethodText(method) {
+      const methodMap = {
+        none: '无认证',
+        token: 'Token认证'
+      }
+      return methodMap[method] || '未知'
+    },
+
     getStatusText(status) {
       const statusMap = {
         running: '运行中',
@@ -269,159 +153,144 @@ export default {
       }
       return statusMap[status] || '未知'
     },
-    
-    addNewService() {
-      this.editingService = null
-      this.serviceForm = {
+
+    formatDate(dateString) {
+      if (!dateString) return ''
+      return new Date(dateString).toLocaleString('zh-CN')
+    },
+
+    addNewConfig() {
+      this.editingConfig = null
+      this.configForm = {
         name: '',
-        type: 'web',
-        listenAddress: '',
-        protocol: 'http',
-        maxConnections: 1000,
-        enableSSL: false,
-        sslCertPath: '',
-        enableAuth: false,
-        description: ''
+        bindPort: 7000,
+        authMethod: 'none',
+        authToken: ''
       }
       this.showEditModal = true
     },
-    
-    editService(serviceId) {
-      const service = this.services.find(s => s.id === serviceId)
-      if (service) {
-        this.editingService = service
-        this.serviceForm = { ...service }
+
+    editConfig(configId) {
+      const config = this.configs.find(c => c.id === configId)
+      if (config) {
+        this.editingConfig = config
+        this.configForm = { 
+          name: config.name,
+          bindPort: config.bindPort,
+          authMethod: config.authMethod,
+          authToken: config.authToken || ''
+        }
         this.showEditModal = true
       }
     },
-    
+
     closeModal() {
       this.showEditModal = false
-      this.editingService = null
+      this.editingConfig = null
     },
-    
-    saveService() {
-      if (!this.serviceForm.name || !this.serviceForm.listenAddress) {
-        this.$notify({
-          title: '输入错误',
-          message: '请填写完整的服务信息',
-          type: 'error'
-        })
-        return
-      }
-      
-      if (this.editingService) {
-        // 更新现有服务
-        const index = this.services.findIndex(s => s.id === this.editingService.id)
-        if (index !== -1) {
-          this.services[index] = { 
-            ...this.serviceForm, 
-            id: this.editingService.id,
-            status: this.editingService.status,
-            connections: this.editingService.connections,
-            cpuUsage: this.editingService.cpuUsage,
-            memoryUsage: this.editingService.memoryUsage,
-            createdAt: this.editingService.createdAt
-          }
+
+    async saveConfig() {
+      try {
+        // 清理配置数据，移除不必要的字段
+        const cleanConfig = {
+          name: this.configForm.name,
+          bindPort: this.configForm.bindPort,
+          authMethod: this.configForm.authMethod,
+          authToken: this.configForm.authToken
+        };
+
+        const validation = await window.electronAPI.frpsConfig.validate(cleanConfig)
+        if (!validation.isValid) {
+          this.showNotification('输入错误', validation.errors.join(', '), 'error')
+          return
         }
+
+        if (this.editingConfig) {
+          // 更新现有配置
+          await window.electronAPI.frpsConfig.update(this.editingConfig.id, cleanConfig)
+          this.showNotification('保存成功', `配置"${this.configForm.name}"已更新`, 'success')
+        } else {
+          // 添加新配置
+          await window.electronAPI.frpsConfig.add(cleanConfig)
+          this.showNotification('保存成功', `配置"${this.configForm.name}"已创建`, 'success')
+        }
+        
+        await this.loadConfigs()
+        this.closeModal()
+      } catch (error) {
+        this.showNotification('保存失败', error.message, 'error')
+      }
+    },
+
+    async startConfig(configId) {
+      try {
+        const result = await window.electronAPI.frpsConfig.start(configId)
+        if (result.success) {
+          this.showNotification('启动成功', `配置"${result.config.name}"已启动`, 'success')
+          await this.loadConfigs()
+        }
+      } catch (error) {
+        this.showNotification('启动失败', error.message, 'error')
+      }
+    },
+
+    async stopConfig(configId) {
+      try {
+        const result = await window.electronAPI.frpsConfig.stop(configId)
+        if (result.success) {
+          this.showNotification('停止成功', `配置"${result.config.name}"已停止`, 'warning')
+          await this.loadConfigs()
+        }
+      } catch (error) {
+        this.showNotification('停止失败', error.message, 'error')
+      }
+    },
+
+    async deleteConfig(configId) {
+      const config = this.configs.find(c => c.id === configId)
+      if (!config) return
+
+      if (confirm(`确定要删除配置"${config.name}"吗？`)) {
+        try {
+          const success = await window.electronAPI.frpsConfig.delete(configId)
+          if (success) {
+            this.showNotification('删除成功', `配置"${config.name}"已删除`, 'info')
+            await this.loadConfigs()
+          }
+        } catch (error) {
+          this.showNotification('删除失败', error.message, 'error')
+        }
+      }
+    },
+
+    async viewTomlContent(configId) {
+      try {
+        const content = await window.electronAPI.frpsConfig.getTomlContent(configId)
+        if (content) {
+          this.tomlContent = content
+          this.showTomlModal = true
+        }
+      } catch (error) {
+        this.showNotification('获取配置内容失败', error.message, 'error')
+      }
+    },
+
+    closeTomlModal() {
+      this.showTomlModal = false
+      this.tomlContent = ''
+    },
+
+    showNotification(title, message, type = 'info') {
+      // 使用Element Plus的通知组件
+      if (this.$notify) {
+        this.$notify({
+          title: title,
+          message: message,
+          type: type
+        })
       } else {
-        // 添加新服务
-        const newService = {
-          ...this.serviceForm,
-          id: Math.max(...this.services.map(s => s.id)) + 1,
-          status: 'stopped',
-          connections: 0,
-          cpuUsage: 0,
-          memoryUsage: 0,
-          createdAt: new Date().toLocaleString()
-        }
-        this.services.push(newService)
-      }
-      
-      this.closeModal()
-      this.$notify({
-        title: '保存成功',
-        message: `服务"${this.serviceForm.name}"已保存`,
-        type: 'success'
-      })
-    },
-    
-    startService(serviceId) {
-      const service = this.services.find(s => s.id === serviceId)
-      if (service) {
-        service.status = 'starting'
-        
-        // 模拟服务启动过程
-        setTimeout(() => {
-          service.status = 'running'
-          service.connections = Math.floor(Math.random() * 200) + 1
-          this.$notify({
-            title: '服务启动',
-            message: `服务"${service.name}"已成功启动`,
-            type: 'success'
-          })
-        }, 2000)
-      }
-    },
-    
-    stopService(serviceId) {
-      const service = this.services.find(s => s.id === serviceId)
-      if (service) {
-        service.status = 'stopping'
-        
-        // 模拟服务停止过程
-        setTimeout(() => {
-          service.status = 'stopped'
-          service.connections = 0
-          service.cpuUsage = 0
-          service.memoryUsage = 0
-          this.$notify({
-            title: '服务停止',
-            message: `服务"${service.name}"已停止`,
-            type: 'warning'
-          })
-        }, 1500)
-      }
-    },
-    
-    restartService(serviceId) {
-      const service = this.services.find(s => s.id === serviceId)
-      if (service) {
-        this.stopService(serviceId)
-        setTimeout(() => {
-          this.startService(serviceId)
-        }, 2000)
-      }
-    },
-    
-    deleteService(serviceId) {
-      const service = this.services.find(s => s.id === serviceId)
-      if (service && confirm(`确定要删除服务"${service.name}"吗？`)) {
-        this.services = this.services.filter(s => s.id !== serviceId)
-        this.$notify({
-          title: '删除成功',
-          message: `服务"${service.name}"已删除`,
-          type: 'info'
-        })
-      }
-    },
-    
-    startServiceMonitoring() {
-      this.monitorInterval = setInterval(() => {
-        this.services.forEach(service => {
-          if (service.status === 'running') {
-            // 模拟实时监控数据更新
-            service.connections = Math.max(0, service.connections + Math.floor(Math.random() * 10) - 3)
-            service.cpuUsage = Math.max(0, Math.min(100, service.cpuUsage + (Math.random() * 5 - 2.5)))
-            service.memoryUsage = Math.max(0, service.memoryUsage + (Math.random() * 2 - 1))
-          }
-        })
-      }, 3000)
-    },
-    
-    stopServiceMonitoring() {
-      if (this.monitorInterval) {
-        clearInterval(this.monitorInterval)
+        // 备用方案：使用浏览器原生通知
+        console.log(`${type}: ${title} - ${message}`)
       }
     }
   }
@@ -429,7 +298,7 @@ export default {
 </script>
 
 <style scoped>
-.content-section {
+.server-settings-page {
   padding: 30px;
   max-width: 1200px;
   margin: 0 auto;
@@ -444,26 +313,20 @@ export default {
   border-bottom: 1px solid #e0e0e0;
 }
 
-.page-header h1 {
+.page-header h2 {
   color: #2c3e50;
   margin: 0;
   font-size: 2em;
 }
 
-.page-header p {
-  color: #7f8c8d;
-  margin: 5px 0 0 0;
-  font-size: 1.1em;
-}
-
-.services-grid {
+.configs-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
   gap: 20px;
   margin-bottom: 30px;
 }
 
-.service-card {
+.config-card {
   background: white;
   border-radius: 12px;
   padding: 20px;
@@ -472,135 +335,92 @@ export default {
   transition: all 0.3s ease;
 }
 
-.service-card:hover {
+.config-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 16px rgba(0,0,0,0.15);
 }
 
-.service-card.active {
-  border-left: 4px solid #2ecc71;
-}
-
-.card-header {
+.config-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   margin-bottom: 15px;
 }
 
-.card-header h3 {
-  margin: 0;
+.config-info h3 {
+  margin: 0 0 10px 0;
   color: #2c3e50;
-  font-size: 1.2em;
+  font-size: 1.3em;
 }
 
-.status-indicator {
+.config-details {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 12px;
-  border-radius: 20px;
-  font-size: 0.85em;
-  font-weight: 500;
+  flex-direction: column;
+  gap: 6px;
 }
 
-.status-indicator.running {
-  background: #e8f8f0;
-  color: #27ae60;
-}
-
-.status-indicator.stopped {
-  background: #f8f9fa;
+.port-info, .auth-info {
+  font-size: 0.9em;
   color: #7f8c8d;
 }
 
-.status-indicator.starting,
-.status-indicator.stopping {
+.status {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.8em;
+  font-weight: 500;
+  margin-top: 5px;
+}
+
+.status.running {
+  background: #d4edda;
+  color: #155724;
+}
+
+.status.stopped {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.status.error {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.status.starting, .status.stopping {
   background: #fff3cd;
   color: #856404;
 }
 
-.status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-}
-
-.status-indicator.running .status-dot {
-  background: #2ecc71;
-  animation: pulse 2s infinite;
-}
-
-.status-indicator.stopped .status-dot {
-  background: #95a5a6;
-}
-
-.status-indicator.starting .status-dot,
-.status-indicator.stopping .status-dot {
-  background: #ffc107;
-  animation: pulse 1s infinite;
-}
-
-.service-info {
-  margin-bottom: 15px;
-}
-
-.info-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
-  font-size: 0.9em;
-}
-
-.info-item .label {
-  color: #7f8c8d;
-  font-weight: 500;
-}
-
-.info-item .value {
-  color: #2c3e50;
-  font-family: 'Courier New', monospace;
-}
-
-.info-item .type {
-  background: #9b59b6;
-  color: white;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 0.8em;
-}
-
-.info-item .protocol {
-  background: #3498db;
-  color: white;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 0.8em;
-}
-
-.card-actions {
+.config-actions {
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
+}
+
+.config-meta {
+  font-size: 0.8em;
+  color: #95a5a6;
+  border-top: 1px solid #f0f0f0;
+  padding-top: 10px;
+  margin-top: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 12px;
+  padding: 8px 12px;
   border: none;
   border-radius: 6px;
   cursor: pointer;
   font-size: 0.8em;
   font-weight: 500;
   transition: all 0.2s ease;
-}
-
-.btn-sm {
-  padding: 5px 10px;
-  font-size: 0.75em;
 }
 
 .btn-primary {
@@ -621,6 +441,15 @@ export default {
   background: #27ae60;
 }
 
+.btn-warning {
+  background: #f39c12;
+  color: white;
+}
+
+.btn-warning:hover {
+  background: #e67e22;
+}
+
 .btn-danger {
   background: #e74c3c;
   color: white;
@@ -630,15 +459,13 @@ export default {
   background: #c0392b;
 }
 
-.btn-outline {
-  background: transparent;
-  border: 1px solid #bdc3c7;
-  color: #7f8c8d;
+.btn-info {
+  background: #17a2b8;
+  color: white;
 }
 
-.btn-outline:hover {
-  background: #f8f9fa;
-  border-color: #95a5a6;
+.btn-info:hover {
+  background: #138496;
 }
 
 .btn-secondary {
@@ -648,36 +475,6 @@ export default {
 
 .btn-secondary:hover {
   background: #7f8c8d;
-}
-
-.add-new-card {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 2px dashed #bdc3c7;
-  background: #f8f9fa;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.add-new-card:hover {
-  border-color: #3498db;
-  background: #e3f2fd;
-}
-
-.add-new-content {
-  text-align: center;
-  color: #7f8c8d;
-}
-
-.add-icon {
-  font-size: 2em;
-  display: block;
-  margin-bottom: 8px;
-}
-
-.add-text {
-  font-weight: 500;
 }
 
 /* 模态框样式 */
@@ -703,6 +500,10 @@ export default {
   overflow-y: auto;
 }
 
+.modal-content.toml-modal {
+  width: 600px;
+}
+
 .modal-header {
   display: flex;
   justify-content: space-between;
@@ -716,15 +517,21 @@ export default {
   color: #2c3e50;
 }
 
-.modal-close {
+.close-btn {
   background: none;
   border: none;
   font-size: 1.5em;
   cursor: pointer;
   color: #7f8c8d;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.modal-close:hover {
+.close-btn:hover {
   color: #e74c3c;
 }
 
@@ -750,37 +557,61 @@ export default {
   padding: 10px;
   border: 1px solid #ddd;
   border-radius: 6px;
-  font-size: 0.9em;
+  font-size: 1em;
+  box-sizing: border-box;
 }
 
-.form-group textarea {
-  resize: vertical;
-  min-height: 60px;
-}
-
-.checkbox-label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  font-weight: normal;
-}
-
-.checkbox-label input[type="checkbox"] {
-  width: auto;
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: #3498db;
+  box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
 }
 
 .modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
   padding: 20px;
   border-top: 1px solid #e0e0e0;
-  display: flex;
-  gap: 10px;
-  justify-content: flex-end;
 }
 
-@keyframes pulse {
-  0% { opacity: 1; }
-  50% { opacity: 0.5; }
-  100% { opacity: 1; }
+.toml-content {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+  padding: 15px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.9em;
+  line-height: 1.5;
+  color: #2c3e50;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .server-settings-page {
+    padding: 15px;
+  }
+  
+  .configs-list {
+    grid-template-columns: 1fr;
+  }
+  
+  .config-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+  
+  .config-actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .modal-content {
+    width: 95vw;
+  }
 }
 </style>
