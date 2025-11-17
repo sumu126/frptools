@@ -3,6 +3,7 @@ import { dialogController } from '../../dialog/dialogController/dialogController
 import { configController } from '../../configManager/configController/configController.mjs';
 import { tunnelController } from '../../frps/Controller/tunnelController.mjs';
 import { frpsConfigController } from '../../frps/Controller/frpsConfigController.mjs';
+import { wallpaperController } from '../../wallpaperManager/wallpaperController/wallpaperController.mjs';
 
 /**
  * 初始化所有控制器
@@ -14,5 +15,6 @@ function initializeControllers(mainPage) {
     configController();
     tunnelController();
     frpsConfigController(mainPage);
+    wallpaperController(mainPage);
 }
 export { initializeControllers };

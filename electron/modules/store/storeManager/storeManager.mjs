@@ -12,10 +12,11 @@ const storeManager = {
   /**
    * 获取某个设置项的值
    * @param {string} key - 设置项的键
+   * @param {*} defaultValue - 默认值（可选）
    * @returns {*} - 返回对应的值
    */
-  get(key) {
-    return store.get(key);
+  get(key, defaultValue = undefined) {
+    return store.get(key, defaultValue);
   },
 
   /**
@@ -25,6 +26,14 @@ const storeManager = {
    */
   set(key, value) {
     store.set(key, value);
+  },
+
+  /**
+   * 删除某个设置项
+   * @param {string} key - 设置项的键
+   */
+  delete(key) {
+    store.delete(key);
   },
 
   /**

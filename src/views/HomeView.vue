@@ -129,7 +129,7 @@ export default {
 /* 左侧导航栏样式 */
 .sidebar {
   width: 250px;
-  background: #2c3e50;
+  background: rgba(44, 62, 80, var(--window-opacity, 1));
   color: white;
   display: flex;
   flex-direction: column;
@@ -190,6 +190,7 @@ export default {
 .content-area {
   flex: 1;
   overflow-y: auto;
-  background: #ecf0f1;
+  background: rgba(236, 240, 241, var(--window-opacity, 1));
+  /* 移除模糊效果，避免影响壁纸显示 */
 }
 </style>

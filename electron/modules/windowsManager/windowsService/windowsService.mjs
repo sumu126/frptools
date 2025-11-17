@@ -25,12 +25,13 @@ function setupCSP() {
       responseHeaders: {
         ...details.responseHeaders,
         'Content-Security-Policy': [
-          // 严格的内容安全策略
-          "default-src 'self' 'unsafe-inline' data:; " +
+          // 严格的内容安全策略，允许访问本地文件
+          "default-src 'self' 'unsafe-inline' data: file:; " +
           "script-src 'self' 'unsafe-inline'; " +
           "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
           "font-src 'self' https://fonts.gstatic.com; " +
-          "img-src 'self' data: https:; " +
+          "img-src 'self' data: file: https:; " +
+          "media-src 'self' data: file: https:; " +
           "connect-src 'self' https: wss:;"
         ]
       }
@@ -68,6 +69,8 @@ function createMainWindow() {
             contextIsolation: true,
             // 🔒 启用进程沙箱
             sandbox: true,
+            // 🔒 允许访问本地文件（用于壁纸功能）
+            webSecurity: false,
             // 🔒 预加载脚本（用于安全地暴露 API）
             preload: path.join(__dirname, '..', '..', '..', 'preload.cjs')
         }

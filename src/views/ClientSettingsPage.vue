@@ -222,20 +222,14 @@ export default {
   methods: {
     // 显示通知的通用方法
     showNotification(title, message, type = 'info') {
-      // 使用浏览器原生通知作为备选方案
-      if (window.Notification && Notification.permission === 'granted') {
-        new Notification(title, {
-          body: message,
-          icon: '/favicon.ico'
-        })
-      } else {
-        // 使用console作为备选
-        console.log(`[${type.toUpperCase()}] ${title}: ${message}`)
-        // 也可以考虑使用alert作为最后的备选
-        if (type === 'error') {
-          alert(`${title}: ${message}`)
-        }
-      }
+      // 使用Element Plus的通知组件
+      this.$notify({
+        title: title,
+        message: message,
+        type: type,
+        duration: 3000,
+        position: 'top-right'
+      })
     },
     // 加载隧道数据
     async loadTunnels() {

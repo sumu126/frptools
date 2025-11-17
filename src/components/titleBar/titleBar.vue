@@ -62,7 +62,7 @@ export default {
   justify-content: space-between;
   align-items: center;
   height: 40px;
-  background: rgba(30, 30, 30, 0.9);
+  background: rgba(30, 30, 30, var(--window-opacity, 1));
   color: white;
   -webkit-app-region: drag;
   padding: 0 10px;
@@ -109,13 +109,13 @@ export default {
 
 /* 深色主题 */
 .title-bar.theme-dark {
-  background: rgba(30, 30, 30, 0.9);
+  background: rgba(30, 30, 30, var(--window-opacity, 1));
   border-bottom-color: rgba(255, 255, 255, 0.1);
 }
 
 /* 浅色主题 */
 .title-bar.theme-light {
-  background: rgba(250, 250, 250, 0.9);
+  background: rgba(250, 250, 250, var(--window-opacity, 1));
   color: #333;
   border-bottom-color: rgba(0, 0, 0, 0.1);
 }
@@ -191,7 +191,7 @@ export default {
 
 /* 主题样式 */
 .title-bar.theme-light {
-  background: rgba(240, 240, 240, 0.9);
+  background: rgba(240, 240, 240, var(--window-opacity, 1));
   color: #333;
 }
 
