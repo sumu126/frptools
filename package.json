@@ -26,6 +26,7 @@
     "electron-util": "^1.0.0",
     "element-plus": "^2.11.8",
     "pinia": "^3.0.3",
+    "ps-list": "^9.0.0",
     "vue": "^3.5.22",
     "vue-router": "^4.6.3"
   },
@@ -64,7 +65,9 @@
       "output": "electron-build"
     },
     "asar": true,
-    "extraResources": [],
+    "extraResources": [
+      "frps/"
+    ],
     "nsis": {
       "oneClick": false,
       "allowElevation": true,
@@ -93,8 +96,7 @@
       "target": {
         "target": "deb",
         "arch": [
-          "x64",
-          "ia32"
+          "x64"
         ]
       },
       "maintainer": "-",

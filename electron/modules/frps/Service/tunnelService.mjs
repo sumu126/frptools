@@ -1,9 +1,174 @@
 import { storeManager } from '../../store/storeManager/storeManager.mjs';
+import path from 'path';
+import { app } from 'electron';
+import fs from 'fs';
+
+import UniversalProcessManager from '../../UniversalProcessManager/utils/UniversalProcessManager.mjs';
+// 实例化进程管理器
+const manager = new UniversalProcessManager();
+
+// 存储隧道ID与进程PID的映射
+const tunnelProcessMap = new Map();
+
+// 存储隧道ID与日志的映射
+const tunnelLogsMap = new Map();
+
+// 监听UniversalProcessManager的事件
+manager.on('process-output', (pid, logEntry) => {
+  // 查找对应的隧道ID
+  const tunnelId = getTunnelIdByPid(pid);
+  if (tunnelId) {
+    // 存储日志
+    let logs = tunnelLogsMap.get(tunnelId) || [];
+    logs.push(logEntry);
+    
+    // 限制日志数量
+    if (logs.length > 1000) {
+      logs = logs.slice(-500);
+    }
+    
+    tunnelLogsMap.set(tunnelId, logs);
+    
+    console.log(`隧道 ${tunnelId} 输出:`, logEntry.data);
+  }
+});
+
+// 事件监听器将在TunnelService实例化后设置
+
+/**
+ * 根据PID获取隧道ID
+ * @param {number} pid 进程PID
+ * @returns {number|null} 隧道ID
+ */
+function getTunnelIdByPid(pid) {
+  for (const [tunnelId, processPid] of tunnelProcessMap.entries()) {
+    if (processPid === pid) {
+      return tunnelId;
+    }
+  }
+  return null;
+}
+
+
+
+/**
+ * 获取frpc可执行文件的路径
+ * @returns {string} frpc可执行文件的绝对路径
+ */
+function getFrpcPath() {
+  // 判断是否为开发环境
+  const isDev = !app.isPackaged;
+  
+  if (isDev) {
+    // 开发环境下的路径
+    return path.join(process.cwd(), 'frps', 'windows', 'frpc.exe');
+  } else {
+    // 打包后的路径
+    return path.join(process.resourcesPath, 'frps', 'windows', 'frpc.exe');
+  }
+}
+
+/**
+ * 生成frpc配置文件内容并保存到文件
+ * @param {Object} tunnel 隧道对象
+ * @param {number} tunnelId 隧道ID
+ * @returns {string} frpc配置文件路径
+ */
+function generateFrpcConfig(tunnel, tunnelId) {
+  const config = tunnel.tunnelJson;
+  const configContent = `[common]
+server_addr = ${config.yclocation}
+server_port = ${config.ycprot}
+${config.token ? `token = "${config.token}"` : ''}
+
+[[proxies]]
+name = "${config.frp}"
+type = ${config.frptype}
+local_ip = ${config.location}
+local_port = ${config.prot}
+remote_port = ${config.yckfprot}
+`;
+  
+  // 获取frpc可执行文件路径和目录
+  const frpcPath = getFrpcPath();
+  const frpcDir = path.dirname(frpcPath);
+  
+  // 生成配置文件路径
+  const configPath = path.join(frpcDir, `tunnel_${tunnelId}.toml`);
+  
+  // 如果配置文件已存在，先删除
+  if (fs.existsSync(configPath)) {
+    fs.unlinkSync(configPath);
+  }
+  
+  // 将配置写入文件
+  fs.writeFileSync(configPath, configContent, 'utf8');
+  
+  return configPath;
+}
 
 class TunnelService {
   constructor() {
     this.tunnelsKey = 'tunnels';
     this.initializeDefaultTunnels();
+    
+    // 设置进程事件监听器
+    this.setupProcessEventListeners();
+  }
+  
+  /**
+   * 设置进程事件监听器
+   */
+  setupProcessEventListeners() {
+    // 监听进程错误事件
+    manager.on('process-error', (pid, processInfo, error) => {
+      const tunnelId = getTunnelIdByPid(pid);
+      if (tunnelId) {
+        console.error(`隧道 ${tunnelId} 错误:`, error);
+        this.updateTunnelStatusOnError(tunnelId, error.message);
+      }
+    });
+    
+    // 监听进程退出事件
+    manager.on('process-exited', (pid, processInfo) => {
+      const tunnelId = getTunnelIdByPid(pid);
+      if (tunnelId) {
+        console.log(`隧道 ${tunnelId} 进程已退出，退出码:`, processInfo.exitCode);
+        // 如果进程意外退出，更新状态
+        if (processInfo.status === 'exited' && processInfo.exitCode !== 0) {
+          this.updateTunnelStatusOnError(tunnelId, `进程意外退出，退出码: ${processInfo.exitCode}`);
+        } else if (processInfo.exitCode === 0) {
+          // 正常退出，更新状态为stopped
+          this.updateTunnelStatus(tunnelId, 'stopped');
+          // 从映射中移除
+          tunnelProcessMap.delete(tunnelId);
+        }
+      }
+    });
+  }
+  
+  /**
+   * 隧道错误时更新状态
+   * @param {number} tunnelId 隧道ID
+   * @param {string} errorMessage 错误信息
+   */
+  updateTunnelStatusOnError(tunnelId, errorMessage) {
+    const tunnel = this.getTunnelById(tunnelId);
+    if (tunnel && tunnel.status === 'running') {
+      // 更新隧道状态为错误
+      const tunnels = this.getAllTunnels();
+      const index = tunnels.findIndex(t => t.id === tunnelId);
+      tunnels[index].status = 'error';
+      tunnels[index].errorMessage = errorMessage;
+      tunnels[index].updatedAt = new Date().toISOString();
+      
+      storeManager.set(this.tunnelsKey, tunnels);
+      
+      // 从映射中移除
+      tunnelProcessMap.delete(tunnelId);
+      
+      console.error(`隧道 ${tunnelId} 状态更新为错误:`, errorMessage);
+    }
   }
 
   /**
@@ -189,51 +354,112 @@ class TunnelService {
   /**
    * 启动隧道
    * @param {number} id 隧道ID
-   * @returns {Object} 操作结果
+   * @returns {Promise<Object>} 操作结果
    */
-  startTunnel(id) {
-    const tunnel = this.getTunnelById(id);
-    if (!tunnel) {
-      throw new Error(`隧道 ${id} 不存在`);
-    }
+  async startTunnel(id) {
+    try {
+      const tunnel = this.getTunnelById(id);
+      if (!tunnel) {
+        throw new Error(`隧道 ${id} 不存在`);
+      }
 
-    if (tunnel.status === 'running') {
-      throw new Error(`隧道 ${id} 已在运行中`);
-    }
+      if (tunnel.status === 'running') {
+        throw new Error(`隧道 ${id} 已在运行中`);
+      }
 
-    const tunnels = this.getAllTunnels();
-    const index = tunnels.findIndex(t => t.id === id);
-    tunnels[index].status = 'running';
-    tunnels[index].lastStartedAt = new Date().toISOString();
-    tunnels[index].updatedAt = new Date().toISOString();
-    
-    storeManager.set(this.tunnelsKey, tunnels);
-    return { success: true, tunnel: tunnels[index] };
+      // 生成配置文件并获取路径
+      const configPath = generateFrpcConfig(tunnel, id);
+      
+      // 获取frpc可执行文件路径
+      const frpcPath = getFrpcPath();
+      
+      // 启动frpc进程，使用-c参数传入配置文件路径
+      const result = await manager.startApplication(frpcPath, ['-c', configPath], {
+        windowsHide: true
+      });
+
+      // 在这里删除掉临时的frp启动配置文件会有问题，
+      // 因为frpc进程可能还在使用这个配置文件
+      // fs.unlinkSync(configPath);
+      
+      if (!result.success) {
+        throw new Error(`启动frpc失败: ${result.error}`);
+      }
+      
+      // 存储隧道ID与进程PID的映射
+      tunnelProcessMap.set(id, result.pid);
+      
+      // 更新隧道状态
+      const tunnels = this.getAllTunnels();
+      const index = tunnels.findIndex(t => t.id === id);
+      tunnels[index].status = 'running';
+      tunnels[index].pid = result.pid;
+      tunnels[index].lastStartedAt = new Date().toISOString();
+      tunnels[index].updatedAt = new Date().toISOString();
+      tunnels[index].configPath = configPath; // 保存配置文件路径
+      
+      storeManager.set(this.tunnelsKey, tunnels);
+      
+      return { 
+        success: true, 
+        tunnel: tunnels[index],
+        pid: result.pid,
+        configPath: configPath // 返回配置文件路径
+      };
+    } catch (error) {
+      console.error(`启动隧道 ${id} 失败:`, error);
+      throw error;
+    }
   }
 
   /**
    * 停止隧道
    * @param {number} id 隧道ID
-   * @returns {Object} 操作结果
+   * @returns {Promise<Object>} 操作结果
    */
-  stopTunnel(id) {
-    const tunnel = this.getTunnelById(id);
-    if (!tunnel) {
-      throw new Error(`隧道 ${id} 不存在`);
-    }
+  async stopTunnel(id) {
+    try {
+      const tunnel = this.getTunnelById(id);
+      if (!tunnel) {
+        throw new Error(`隧道 ${id} 不存在`);
+      }
 
-    if (tunnel.status === 'stopped') {
-      throw new Error(`隧道 ${id} 已停止`);
-    }
+      if (tunnel.status === 'stopped') {
+        throw new Error(`隧道 ${id} 已停止`);
+      }
 
-    const tunnels = this.getAllTunnels();
-    const index = tunnels.findIndex(t => t.id === id);
-    tunnels[index].status = 'stopped';
-    tunnels[index].lastStoppedAt = new Date().toISOString();
-    tunnels[index].updatedAt = new Date().toISOString();
-    
-    storeManager.set(this.tunnelsKey, tunnels);
-    return { success: true, tunnel: tunnels[index] };
+      // 获取进程PID
+      const pid = tunnelProcessMap.get(id) || tunnel.pid;
+      
+      if (pid) {
+        // 使用UniversalProcessManager停止进程
+        const stopResult = await manager.stopApplication(pid);
+        
+        if (!stopResult.success) {
+          console.warn(`停止frpc进程失败 (PID: ${pid}):`, stopResult.error);
+          // 尝试强制停止
+          await manager.forceKillProcess(pid);
+        }
+        
+        // 从映射中移除
+        tunnelProcessMap.delete(id);
+      }
+
+      // 更新隧道状态
+      const tunnels = this.getAllTunnels();
+      const index = tunnels.findIndex(t => t.id === id);
+      tunnels[index].status = 'stopped';
+      delete tunnels[index].pid;
+      tunnels[index].lastStoppedAt = new Date().toISOString();
+      tunnels[index].updatedAt = new Date().toISOString();
+      
+      storeManager.set(this.tunnelsKey, tunnels);
+      
+      return { success: true, tunnel: tunnels[index] };
+    } catch (error) {
+      console.error(`停止隧道 ${id} 失败:`, error);
+      throw error;
+    }
   }
 
   /**
@@ -330,6 +556,62 @@ class TunnelService {
   getTunnelJsonConfig(id) {
     const tunnel = this.getTunnelById(id);
     return tunnel ? tunnel.tunnelJson : null;
+  }
+  
+  /**
+   * 获取隧道日志
+   * @param {number} id 隧道ID
+   * @returns {Array} 日志数组
+   */
+  getTunnelLogs(id) {
+    return tunnelLogsMap.get(id) || [];
+  }
+  
+  /**
+   * 清除隧道日志
+   * @param {number} id 隧道ID
+   */
+  clearTunnelLogs(id) {
+    tunnelLogsMap.delete(id);
+  }
+  
+  /**
+   * 停止所有运行中的隧道
+   * @returns {Promise<Array>} 所有隧道的停止结果
+   */
+  async stopAllTunnels() {
+    const tunnels = this.getAllTunnels();
+    const runningTunnels = tunnels.filter(tunnel => tunnel.status === 'running');
+    
+    const stopPromises = runningTunnels.map(tunnel => {
+      return this.stopTunnel(tunnel.id)
+        .catch(error => {
+          console.error(`停止隧道 ${tunnel.id} 失败:`, error);
+          return { success: false, tunnelId: tunnel.id, error: error.message };
+        });
+    });
+    
+    return Promise.all(stopPromises);
+  }
+  
+  /**
+   * 检查隧道是否正在运行
+   * @param {number} id 隧道ID
+   * @returns {boolean} 是否正在运行
+   */
+  isTunnelRunning(id) {
+    const tunnel = this.getTunnelById(id);
+    if (!tunnel || tunnel.status !== 'running') {
+      return false;
+    }
+    
+    const pid = tunnelProcessMap.get(id) || tunnel.pid;
+    if (!pid) {
+      return false;
+    }
+    
+    // 检查进程是否仍在运行
+    return manager.checkProcessExists(pid).catch(() => false);
   }
 }
 

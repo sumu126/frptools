@@ -115,9 +115,9 @@ function frpsConfigController(mainPage) {
   });
 
   // 启动配置
-  ipcMain.handle('frpsConfig:start', (event, id) => {
+  ipcMain.handle('frpsConfig:start', async (event, id) => {
     try {
-      const result = frpsConfigService.startConfig(id);
+      const result = await frpsConfigService.startConfig(id);
       return sanitizeObject(result);
     } catch (error) {
       console.error('启动FRPS配置失败:', error);
@@ -126,9 +126,9 @@ function frpsConfigController(mainPage) {
   });
 
   // 停止配置
-  ipcMain.handle('frpsConfig:stop', (event, id) => {
+  ipcMain.handle('frpsConfig:stop', async (event, id) => {
     try {
-      const result = frpsConfigService.stopConfig(id);
+      const result = await frpsConfigService.stopConfig(id);
       return sanitizeObject(result);
     } catch (error) {
       console.error('停止FRPS配置失败:', error);
@@ -137,9 +137,9 @@ function frpsConfigController(mainPage) {
   });
 
   // 重启配置
-  ipcMain.handle('frpsConfig:restart', (event, id) => {
+  ipcMain.handle('frpsConfig:restart', async (event, id) => {
     try {
-      const result = frpsConfigService.restartConfig(id);
+      const result = await frpsConfigService.restartConfig(id);
       return sanitizeObject(result);
     } catch (error) {
       console.error('重启FRPS配置失败:', error);
