@@ -130,9 +130,7 @@ class WallpaperService {
         if (opacity < 0.1 || opacity > 1.0) {
             throw new Error('透明度必须在0.1到1.0之间');
         }
-        console.log('设置窗口透明度:', opacity);
         storeManager.set(this.opacityKey, opacity);
-        console.log('窗口透明度已保存到本地存储');
         
         // 验证保存是否成功
         const saved = storeManager.get(this.opacityKey);
