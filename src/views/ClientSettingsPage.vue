@@ -120,9 +120,7 @@
             <label>协议类型:</label>
             <select v-model="tunnelForm.protocol">
               <option value="tcp">TCP</option>
-              <option value="http">HTTP</option>
-              <option value="https">HTTPS</option>
-              <option value="websocket">WebSocket</option>
+              <option value="UDP">UDP</option>
             </select>
           </div>
           
@@ -131,7 +129,6 @@
             <select v-model="tunnelForm.authType">
               <option value="none">无认证</option>
               <option value="token">Token认证</option>
-              <option value="basic">基本认证</option>
             </select>
           </div>
           
@@ -155,38 +152,7 @@ export default {
   name: 'ClientSettingsPage',
   data() {
     return {
-      tunnels: [
-        {
-          id: 1,
-          name: 'Web服务隧道',
-          localAddress: '127.0.0.1:8080',
-          remoteAddress: 'web.example.com:80',
-          protocol: 'http',
-          status: 'running',
-          authType: 'token',
-          createdAt: '2024-01-15 10:30:00'
-        },
-        {
-          id: 2,
-          name: '数据库隧道',
-          localAddress: '127.0.0.1:3306',
-          remoteAddress: 'db.example.com:3306',
-          protocol: 'tcp',
-          status: 'stopped',
-          authType: 'none',
-          createdAt: '2024-01-10 14:20:00'
-        },
-        {
-          id: 3,
-          name: 'API服务隧道',
-          localAddress: '127.0.0.1:3000',
-          remoteAddress: 'api.example.com:443',
-          protocol: 'https',
-          status: 'running',
-          authType: 'basic',
-          createdAt: '2024-01-08 09:15:00'
-        }
-      ],
+      tunnels: [],
       showEditModal: false,
       editingTunnel: null,
       tunnelForm: {
