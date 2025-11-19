@@ -17,7 +17,7 @@
     "build-only": "vite build",
     "type-check": "vue-tsc --build",
     "electron:dev": "concurrently -k \"vite\" \"wait-on http://localhost:5173 && electron . --dev\"",
-    "electron:build": "vite build && electron-builder --win",
+    "electron:build": "vite build && electron-builder",
     "electron:build:deb": "vite build && electron-builder --linux"
   },
   "dependencies": {
@@ -59,7 +59,8 @@
     ],
     "asarUnpack": [
       "icon.ico",
-      "icon256.ico"
+      "icon256.ico",
+      "node_modules/**/*"
     ],
     "directories": {
       "output": "electron-build"
@@ -86,24 +87,9 @@
       "target": {
         "target": "nsis",
         "arch": [
-          "x64",
-          "ia32"
-        ]
-      }
-    },
-    "linux": {
-      "icon": "./icon256.png",
-      "target": {
-        "target": "deb",
-        "arch": [
           "x64"
         ]
-      },
-      "maintainer": "-",
-      "category": "Utility"
-    },
-    "deb": {
-      "afterInstall": "./DEBIAN/postinst.sh"
+      }
     }
   }
 }
