@@ -117,7 +117,7 @@ function createMainWindow() {
         // 开发环境：建议使用 HTTPS 或确保本地开发服务器安全
         mainPage.loadURL('http://localhost:5173')
         // 开发环境：打开开发者工具
-        // mainPage.webContents.openDevTools()
+        mainPage.webContents.openDevTools()
     } else {
         // 生产环境
         const indexHtmlPath = path.join(__dirname, '..', '..', '..', '..', 'dist', 'index.html');

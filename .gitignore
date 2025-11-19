@@ -28,6 +28,7 @@ electron-build
 *.sw?
 
 .npmrc
+yarn.lock
 
 *.tsbuildinfo
 
