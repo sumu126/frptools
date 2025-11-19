@@ -82,26 +82,26 @@ frptools是一款基于[Electron](https://www.electronjs.org/)和[Vue 3](https:/
 
 ### 安装依赖
 ```bash
-# 使用npm
-npm install
+# 使用yarn安装依赖
+yarn install
 
-# 或使用pnpm
+# 或使用pnpm安装依赖
 pnpm install
 ```
 
 ### 开发模式
 ```bash
 # 启动开发服务器
-npm run electron:dev
+yarn run electron:dev
 ```
 
 ### 构建应用
 ```bash
 # 构建Windows版本
-npm run electron:build
+yarn run electron:build
 
 # 构建Linux版本（尚在开发）
-npm run electron:build:deb
+yarn run electron:build:deb
 ```
 
 ## 开源鸣谢
