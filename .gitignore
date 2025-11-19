@@ -27,6 +27,8 @@ electron-build
 *.sln
 *.sw?
 
+.npmrc
+
 *.tsbuildinfo
 
 .eslintcache

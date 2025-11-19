@@ -1,8 +1,8 @@
 {
   "name": "frptools",
   "description": "更好的frp工具",
-  "author": "-",
-  "homepage": "-",
+  "author": "sumu126,CryMark",
+  "homepage": "https://github.com/sumu126/frptools",
   "version": "0.0.0",
   "private": true,
   "main": "electron/main.mjs",
@@ -59,8 +59,7 @@
     ],
     "asarUnpack": [
       "icon.ico",
-      "icon256.ico",
-      "node_modules/**/*"
+      "icon256.ico"
     ],
     "directories": {
       "output": "electron-build"
@@ -87,7 +86,8 @@
       "target": {
         "target": "nsis",
         "arch": [
-          "x64"
+          "x64",
+          "ia32"
         ]
       }
     }
