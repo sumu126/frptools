@@ -1,26 +1,38 @@
 <template>
   <div class="content-section">
     <div class="page-header">
-      <h2>📋 隧道日志</h2>
-      <p class="page-description">查看和管理隧道运行日志</p>
+      <h2>📋 日志管理</h2>
+      <p class="page-description">查看和管理隧道与服务端日志</p>
+      <div class="log-type-selector">
+        <label>日志类型：</label>
+        <select 
+          id="log-type-select" 
+          v-model="logType" 
+          @change="onLogTypeChange"
+          class="log-type-select"
+        >
+          <option value="tunnel">隧道日志</option>
+          <option value="server">服务端日志</option>
+        </select>
+      </div>
     </div>
 
-    <!-- 隧道选择器 -->
+    <!-- 选择器 -->
     <div class="tunnel-selector">
-      <label for="tunnel-select">选择隧道：</label>
+      <label for="item-select">{{ logType === 'tunnel' ? '选择隧道：' : '选择服务：' }}</label>
       <select 
-        id="tunnel-select" 
-        v-model="selectedTunnelId" 
-        @change="loadTunnelLogs"
+        id="item-select" 
+        v-model="selectedId" 
+        @change="onSelectionChange"
         class="tunnel-select"
       >
-        <option value="">请选择隧道</option>
+        <option value="">{{ logType === 'tunnel' ? '请选择隧道' : '请选择服务' }}</option>
         <option 
-          v-for="tunnel in runningTunnels" 
-          :key="tunnel.id" 
-          :value="tunnel.id"
+          v-for="item in selectableItems" 
+          :key="item.id" 
+          :value="item.id"
         >
-          {{ tunnel.name }} ({{ getStatusText(tunnel.status) }})
+          {{ item.name }} {{ logType === 'tunnel' ? `(${getStatusText(item.status)})` : '' }}
         </option>
       </select>
       <button 
@@ -34,10 +46,10 @@
     </div>
 
     <!-- 日志控制按钮 -->
-    <div class="log-controls" v-if="selectedTunnelId">
+    <div class="log-controls" v-if="selectedId">
       <button 
         class="btn btn-primary btn-sm"
-        @click="loadTunnelLogs"
+        @click="loadLogs"
         :disabled="loading"
       >
         <span class="btn-icon">🔄</span>
@@ -66,14 +78,14 @@
     </div>
 
     <!-- 日志显示区域 -->
-    <div class="log-container" v-if="selectedTunnelId">
+    <div class="log-container" v-if="selectedId">
       <div v-if="loading" class="loading">
         <div class="spinner"></div>
         <p>加载日志中...</p>
       </div>
       <div v-else-if="logs.length === 0" class="empty-logs">
         <p>📝 暂无日志数据</p>
-        <p>启动隧道后将显示相关日志</p>
+        <p>{{ logType === 'tunnel' ? '启动隧道后将显示相关日志' : '启动服务后将显示相关日志' }}</p>
       </div>
       <div v-else class="log-content">
         <div 
@@ -89,9 +101,9 @@
       </div>
     </div>
 
-    <!-- 未选择隧道时的提示 -->
+    <!-- 未选择项目时的提示 -->
     <div v-else class="no-tunnel-selected">
-      <p>🔍 请从上方选择一个隧道来查看其日志</p>
+      <p>🔍 请从上方选择一个{{ logType === 'tunnel' ? '隧道' : '服务' }}来查看其日志</p>
     </div>
   </div>
 </template>
@@ -101,9 +113,13 @@ export default {
   name: 'TunnelLogsPage',
   data() {
     return {
-      tunnels: [],
-      selectedTunnelId: '',
       logs: [],
+      selectedTunnelId: '',
+      selectedServerId: null,
+      selectedId: null,
+      logType: 'tunnel', // 'tunnel' 或 'server'
+      tunnels: [],
+      servers: [],
       loading: false,
       lastUpdated: null,
       autoRefreshInterval: null
@@ -115,10 +131,17 @@ export default {
      */
     runningTunnels() {
       return this.tunnels.filter(tunnel => tunnel.status === 'running');
+    },
+    runningServers() {
+      return this.servers.filter(server => server.status === 'running');
+    },
+    selectableItems() {
+      return this.logType === 'tunnel' ? this.runningTunnels : this.runningServers;
     }
   },
   mounted() {
     this.loadTunnels();
+    this.loadServers();
     this.startAutoRefresh();
   },
   beforeUnmount() {
@@ -143,13 +166,104 @@ export default {
       }
     },
 
+    async loadServers() {
+      try {
+        const result = await window.electronAPI.frpsConfig.getAll();
+        if (result.error) {
+          console.error('获取服务端列表失败:', result.error);
+          this.showNotification('获取服务端列表失败', result.error, 'error');
+          return;
+        }
+        this.servers = result || [];
+      } catch (error) {
+        console.error('获取服务端列表失败:', error);
+        this.showNotification('获取服务端列表失败', error.message, 'error');
+      }
+    },
+
     /**
-     * 刷新隧道列表
+     * 刷新项目列表
      */
-    async refreshTunnels() {
-      await this.loadTunnels();
-      if (this.selectedTunnelId) {
-        await this.loadTunnelLogs();
+    async refreshItems() {
+      if (this.logType === 'tunnel') {
+        await this.loadTunnels();
+      } else {
+        await this.loadServers();
+      }
+      if (this.selectedId) {
+        await this.loadLogs();
+      }
+    },
+
+    /**
+     * 日志类型切换处理
+     */
+    onLogTypeChange() {
+      // 切换日志类型时清空选择
+      this.selectedId = null;
+      this.logs = [];
+      
+      // 加载对应类型的数据
+      if (this.logType === 'server') {
+        this.loadServers();
+      }
+    },
+
+    /**
+     * 选择变化处理
+     */
+    onSelectionChange() {
+      // 选择变化时加载对应的日志
+      this.loadLogs();
+    },
+
+    /**
+     * 加载日志
+     */
+    async loadLogs() {
+      if (!this.selectedId) {
+        this.logs = [];
+        return;
+      }
+
+      try {
+        if (this.logType === 'tunnel') {
+          await this.loadTunnelLogs();
+        } else {
+          await this.loadServerLogs();
+        }
+      } catch (error) {
+        console.error('加载日志失败:', error);
+        this.showNotification('加载日志失败', error.message, 'error');
+      }
+    },
+
+    /**
+     * 加载服务端日志
+     */
+    async loadServerLogs() {
+      if (!this.selectedId) {
+        this.logs = [];
+        return;
+      }
+
+      this.loading = true;
+      try {
+        console.log(`正在加载服务端 ${this.selectedId} 的日志...`);
+        const result = await window.electronAPI.frpsConfig.getLogs(this.selectedId);
+        if (result.error) {
+          console.error('获取服务端日志失败:', result.error);
+          this.showNotification('获取服务端日志失败', result.error, 'error');
+          return;
+        }
+        this.logs = result || [];
+        this.lastUpdated = new Date();
+        console.log(`服务端 ${this.selectedId} 日志加载成功:`, this.logs);
+      } catch (error) {
+        console.error('获取服务端日志失败:', error);
+        this.showNotification('获取服务端日志失败', error.message, 'error');
+      } finally {
+        this.loading = false;
       }
     },
 
@@ -157,11 +271,11 @@ export default {
      * 加载隧道日志
      */
     async loadTunnelLogs() {
-      if (!this.selectedTunnelId) return;
+      if (!this.selectedId) return;
 
       this.loading = true;
       try {
-        const result = await window.electronAPI.tunnel.getLogs(this.selectedTunnelId);
+        const result = await window.electronAPI.tunnel.getLogs(this.selectedId);
         if (result.error) {
           console.error('获取隧道日志失败:', result.error);
           this.showNotification('获取隧道日志失败', result.error, 'error');
@@ -181,23 +295,38 @@ export default {
      * 清空日志
      */
     async clearLogs() {
-      if (!this.selectedTunnelId) return;
+      if (!this.selectedId) return;
 
-      const tunnel = this.tunnels.find(t => t.id === this.selectedTunnelId);
-      if (!tunnel) return;
+      let itemName = '';
+      if (this.logType === 'tunnel') {
+        const tunnel = this.tunnels.find(t => t.id === this.selectedId);
+        if (!tunnel) return;
+        itemName = tunnel.name;
+      } else {
+        const server = this.servers.find(s => s.id === this.selectedId);
+        if (!server) return;
+        itemName = server.name;
+      }
 
-      if (confirm(`确定要清空隧道"${tunnel.name}"的日志吗？`)) {
+      const itemType = this.logType === 'tunnel' ? '隧道' : '服务端';
+      if (confirm(`确定要清空${itemType}"${itemName}"的日志吗？`)) {
         try {
-          const result = await window.electronAPI.tunnel.clearLogs(this.selectedTunnelId);
+          let result;
+          if (this.logType === 'tunnel') {
+            result = await window.electronAPI.tunnel.clearLogs(this.selectedId);
+          } else {
+            result = await window.electronAPI.frpsConfig.clearLogs(this.selectedId);
+          }
+          
           if (result.error) {
-            console.error('清空隧道日志失败:', result.error);
+            console.error(`清空${itemType}日志失败:`, result.error);
             this.showNotification('清空日志失败', result.error, 'error');
             return;
           }
           this.logs = [];
-          this.showNotification('清空成功', `隧道"${tunnel.name}"的日志已清空`, 'info');
+          this.showNotification('清空成功', `${itemType}"${itemName}"的日志已清空`, 'info');
         } catch (error) {
-          console.error('清空隧道日志失败:', error);
+          console.error(`清空${itemType}日志失败:`, error);
           this.showNotification('清空日志失败', error.message, 'error');
         }
       }
@@ -207,17 +336,28 @@ export default {
      * 导出日志
      */
     async exportLogs() {
-      if (!this.selectedTunnelId || this.logs.length === 0) return;
+      if (!this.selectedId || this.logs.length === 0) return;
 
-      const tunnel = this.tunnels.find(t => t.id === this.selectedTunnelId);
-      if (!tunnel) return;
+      let itemName = '';
+      if (this.logType === 'tunnel') {
+        const tunnel = this.tunnels.find(t => t.id === this.selectedId);
+        if (!tunnel) return;
+        itemName = tunnel.name;
+      } else {
+        const server = this.servers.find(s => s.id === this.selectedId);
+        if (!server) return;
+        itemName = server.name;
+      }
 
+      const itemType = this.logType === 'tunnel' ? '隧道' : '服务端';
+      const fileName = `${itemType}_${itemName}_logs_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.log`;
+      
       try {
-        const logContent = this.generateLogContent(tunnel);
-        const fileName = `tunnel_${tunnel.name}_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.log`;
+        const content = this.logs.map(log => 
+          `[${log.timestamp}] ${log.type.toUpperCase()}: ${log.data}`
+        ).join('\n');
         
-        // 创建下载链接
-        const blob = new Blob([logContent], { type: 'text/plain;charset=utf-8' });
+        const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
@@ -370,8 +510,8 @@ export default {
      */
     startAutoRefresh() {
       this.autoRefreshInterval = setInterval(() => {
-        if (this.selectedTunnelId) {
-          this.loadTunnelLogs();
+        if (this.selectedId) {
+          this.loadLogs();
         }
       }, 5000); // 每5秒刷新一次
     },

@@ -77,7 +77,7 @@ export default {
       navItems: [
         { id: 'client-settings', text: '隧道管理', icon: '💻' },
         { id: 'server-settings', text: '服务管理', icon: '🌐' },
-        { id: 'tunnel-logs', text: '隧道日志', icon: '📋' },
+        { id: 'tunnel-logs', text: '日志', icon: '📋' },
         { id: 'settings', text: '设置', icon: '⚙️' },
         { id: 'about', text: '关于', icon: 'ℹ️' }
       ]

@@ -47,7 +47,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     start: (id) => ipcRenderer.invoke('frpsConfig:start', id),
     stop: (id) => ipcRenderer.invoke('frpsConfig:stop', id),
     restart: (id) => ipcRenderer.invoke('frpsConfig:restart', id),
-    getStatus: (id) => ipcRenderer.invoke('frpsConfig:getStatus', id)
+    getStatus: (id) => ipcRenderer.invoke('frpsConfig:getStatus', id),
+    getLogs: (id) => ipcRenderer.invoke('frpsConfig:getLogs', id),
+    clearLogs: (id) => ipcRenderer.invoke('frpsConfig:clearLogs', id)
   },
   // 壁纸管理
   setWallpaper: (wallpaperData) => ipcRenderer.invoke('set-wallpaper', wallpaperData),

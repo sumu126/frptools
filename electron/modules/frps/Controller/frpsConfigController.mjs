@@ -157,6 +157,28 @@ function frpsConfigController(mainPage) {
       throw error;
     }
   });
+
+  // 获取配置日志
+  ipcMain.handle('frpsConfig:getLogs', (event, id) => {
+    try {
+      const result = frpsConfigService.getConfigLogs(id);
+      return sanitizeObject(result);
+    } catch (error) {
+      console.error('获取FRPS配置日志失败:', error);
+      throw error;
+    }
+  });
+
+  // 清除配置日志
+  ipcMain.handle('frpsConfig:clearLogs', (event, id) => {
+    try {
+      frpsConfigService.clearConfigLogs(id);
+      return { success: true };
+    } catch (error) {
+      console.error('清除FRPS配置日志失败:', error);
+      throw error;
+    }
+  });
 }
 
 export { frpsConfigController };

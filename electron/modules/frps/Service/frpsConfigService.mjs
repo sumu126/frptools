@@ -331,6 +331,12 @@ class FrpsConfigService {
       // 获取frps可执行文件路径
       const frpsPath = this.getFrpsPath();
       
+      console.log(`启动FRPS服务 ${id}:`, {
+        configPath,
+        frpsPath,
+        configName: config.name
+      });
+      
       // 启动frps进程，使用-c参数传入配置文件路径
       const result = await manager.startApplication(frpsPath, ['-c', configPath], {
         windowsHide: true
@@ -340,8 +346,23 @@ class FrpsConfigService {
         throw new Error(`启动frps失败: ${result.error}`);
       }
       
+      console.log(`FRPS服务 ${id} 启动成功，PID: ${result.pid}`);
+      
       // 存储配置ID与进程PID的映射
       frpsProcessMap.set(id, result.pid);
+      
+      // 初始化日志数组
+      if (!frpsLogsMap.has(id)) {
+        frpsLogsMap.set(id, []);
+      }
+      
+      // 添加启动日志
+      const logs = frpsLogsMap.get(id);
+      logs.push({
+        timestamp: new Date(),
+        type: 'stdout',
+        data: `FRPS服务 "${config.name}" 启动成功，PID: ${result.pid}`
+      });
       
       // 更新配置状态
       const configs = this.getAllConfigs();
@@ -362,6 +383,16 @@ class FrpsConfigService {
       };
     } catch (error) {
       console.error(`启动FRPS配置 ${id} 失败:`, error);
+      
+      // 添加错误日志
+      const logs = frpsLogsMap.get(id) || [];
+      logs.push({
+        timestamp: new Date(),
+        type: 'stderr',
+        data: `启动失败: ${error.message}`
+      });
+      frpsLogsMap.set(id, logs);
+      
       throw error;
     }
   }
@@ -487,7 +518,9 @@ class FrpsConfigService {
    * @returns {Array} 日志数组
    */
   getConfigLogs(id) {
-    return frpsLogsMap.get(id) || [];
+    const logs = frpsLogsMap.get(id) || [];
+    console.log(`获取FRPS配置 ${id} 日志，共 ${logs.length} 条:`, logs);
+    return logs;
   }
   
   /**
