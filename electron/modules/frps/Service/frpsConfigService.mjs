@@ -265,6 +265,10 @@ class FrpsConfigService {
         }
         // 删除临时配置文件
         this.deleteTemporaryConfigFile(configId);
+        
+        // 清理日志，避免内存占用
+        this.clearConfigLogs(configId);
+        console.log(`已清理FRPS配置 ${configId} 的日志数据`);
       }
     });
   }
@@ -468,6 +472,10 @@ class FrpsConfigService {
       
       // 删除临时配置文件
       this.deleteTemporaryConfigFile(id);
+      
+      // 清理日志，避免内存占用
+      this.clearConfigLogs(id);
+      console.log(`已清理FRPS配置 ${id} 的日志数据`);
       
       return { success: true, config: configs[index] };
     } catch (error) {
