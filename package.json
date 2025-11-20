@@ -1,9 +1,9 @@
 {
   "name": "frptools",
-  "description": "更好的frp工具",
+  "description": "一个frpGUI工具",
   "author": "sumu126,CryMark",
   "homepage": "https://github.com/sumu126/frptools",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "private": true,
   "main": "electron/main.mjs",
   "type": "module",
@@ -48,7 +48,7 @@
   "build": {
     "productName": "frptools",
     "appId": "com.frptools",
-    "copyright": "CryMark",
+    "copyright": "sumu126,CryMark",
     "afterPack": "./afterPack.cjs",
     "files": [
       "**/*",
