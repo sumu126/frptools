@@ -1,109 +1,133 @@
 <template>
-  <div class="content-section">
+  <div class="logs-page">
     <div class="page-header">
-      <h2>📋 日志管理</h2>
-      <p class="page-description">查看和管理隧道与服务端日志</p>
-      <div class="log-type-selector">
-        <label>日志类型：</label>
-        <select 
-          id="log-type-select" 
-          v-model="logType" 
-          @change="onLogTypeChange"
-          class="log-type-select"
-        >
-          <option value="tunnel">隧道日志</option>
-          <option value="server">服务端日志</option>
-        </select>
+      <h1>日志管理</h1>
+      <p>查看和管理隧道与服务端日志</p>
+      <div class="header-controls">
+        <div class="log-type-selector">
+          <label>日志类型：</label>
+          <select 
+            id="log-type-select" 
+            v-model="logType" 
+            @change="onLogTypeChange"
+            class="form-select"
+          >
+            <option value="tunnel">隧道日志</option>
+            <option value="server">服务端日志</option>
+          </select>
+        </div>
       </div>
     </div>
 
-    <!-- 选择器 -->
-    <div class="tunnel-selector">
-      <label for="item-select">{{ logType === 'tunnel' ? '选择隧道：' : '选择服务：' }}</label>
-      <select 
-        id="item-select" 
-        v-model="selectedId" 
-        @change="onSelectionChange"
-        class="tunnel-select"
-      >
-        <option value="">{{ logType === 'tunnel' ? '请选择隧道' : '请选择服务' }}</option>
-        <option 
-          v-for="item in selectableItems" 
-          :key="item.id" 
-          :value="item.id"
-        >
-          {{ item.name }} {{ logType === 'tunnel' ? `(${getStatusText(item.status)})` : '' }}
-        </option>
-      </select>
-      <button 
-        class="btn btn-primary btn-sm"
-        @click="refreshTunnels"
-        title="刷新隧道列表"
-      >
-        <span class="btn-icon">🔄</span>
-        刷新
-      </button>
-    </div>
-
-    <!-- 日志控制按钮 -->
-    <div class="log-controls" v-if="selectedId">
-      <button 
-        class="btn btn-primary btn-sm"
-        @click="loadLogs"
-        :disabled="loading"
-      >
-        <span class="btn-icon">🔄</span>
-        {{ loading ? '加载中...' : '刷新日志' }}
-      </button>
-      <button 
-        class="btn btn-warning btn-sm"
-        @click="clearLogs"
-        :disabled="loading || logs.length === 0"
-      >
-        <span class="btn-icon">🗑️</span>
-        清空日志
-      </button>
-      <button 
-        class="btn btn-success btn-sm"
-        @click="exportLogs"
-        :disabled="loading || logs.length === 0"
-      >
-        <span class="btn-icon">💾</span>
-        导出日志
-      </button>
-      <div class="log-info">
-        <span>日志条数：{{ logs.length }}</span>
-        <span v-if="lastUpdated">最后更新：{{ formatDate(lastUpdated) }}</span>
+    <!-- 选择器卡片 -->
+    <div class="selector-card">
+      <div class="card-header">
+        <h3>{{ logType === 'tunnel' ? '选择隧道' : '选择服务' }}</h3>
+      </div>
+      <div class="card-body">
+        <div class="selector-controls">
+          <select 
+            id="item-select" 
+            v-model="selectedId" 
+            @change="onSelectionChange"
+            class="form-select"
+          >
+            <option value="">{{ logType === 'tunnel' ? '请选择隧道' : '请选择服务' }}</option>
+            <option 
+              v-for="item in selectableItems" 
+              :key="item.id" 
+              :value="item.id"
+            >
+              {{ item.name }} {{ logType === 'tunnel' ? `(${getStatusText(item.status)})` : '' }}
+            </option>
+          </select>
+          <button 
+            class="btn btn-primary"
+            @click="refreshItems"
+            title="刷新列表"
+          >
+            <span class="btn-icon">🔄</span>
+            刷新
+          </button>
+        </div>
       </div>
     </div>
 
-    <!-- 日志显示区域 -->
-    <div class="log-container" v-if="selectedId">
-      <div v-if="loading" class="loading">
-        <div class="spinner"></div>
-        <p>加载日志中...</p>
+    <!-- 日志控制卡片 -->
+    <div class="log-controls-card" v-if="selectedId">
+      <div class="card-header">
+        <h3>日志控制</h3>
+        <div class="log-info">
+          <span>日志条数：{{ logs.length }}</span>
+          <span v-if="lastUpdated">最后更新：{{ formatDate(lastUpdated) }}</span>
+        </div>
       </div>
-      <div v-else-if="logs.length === 0" class="empty-logs">
-        <p>📝 暂无日志数据</p>
-        <p>{{ logType === 'tunnel' ? '启动隧道后将显示相关日志' : '启动服务后将显示相关日志' }}</p>
+      <div class="card-body">
+        <div class="control-buttons">
+          <button 
+            class="btn btn-primary"
+            @click="loadLogs"
+            :disabled="loading"
+          >
+            <span class="btn-icon">🔄</span>
+            {{ loading ? '加载中...' : '刷新日志' }}
+          </button>
+          <button 
+            class="btn btn-warning"
+            @click="clearLogs"
+            :disabled="loading || logs.length === 0"
+          >
+            <span class="btn-icon">🗑️</span>
+            清空日志
+          </button>
+          <button 
+            class="btn btn-success"
+            @click="exportLogs"
+            :disabled="loading || logs.length === 0"
+          >
+            <span class="btn-icon">💾</span>
+            导出日志
+          </button>
+        </div>
       </div>
-      <div v-else class="log-content">
-        <div 
-          v-for="(log, index) in logs" 
-          :key="index" 
-          class="log-entry"
-          :class="getLogClass(log)"
-        >
-          <span class="log-time">{{ formatLogTime(log.timestamp) }}</span>
-          <span class="log-type" :class="log.type">{{ log.type.toUpperCase() }}</span>
-          <span class="log-message" v-html="formatLogMessage(log.data)"></span>
+    </div>
+
+    <!-- 日志显示卡片 -->
+    <div class="log-display-card" v-if="selectedId">
+      <div class="card-header">
+        <h3>日志内容</h3>
+      </div>
+      <div class="card-body card-body-no-padding">
+        <div v-if="loading" class="loading">
+          <div class="spinner"></div>
+          <p>加载日志中...</p>
+        </div>
+        <div v-else-if="logs.length === 0" class="empty-logs">
+          <p>📝 暂无日志数据</p>
+          <p>{{ logType === 'tunnel' ? '启动隧道后将显示相关日志' : '启动服务后将显示相关日志' }}</p>
+        </div>
+        <div v-else class="log-content">
+          <div 
+            v-for="(log, index) in logs" 
+            :key="index" 
+            class="log-entry"
+            :class="getLogClass(log)"
+          >
+            <span class="log-time">{{ formatLogTime(log.timestamp) }}</span>
+            <span class="log-type" :class="log.type">{{ log.type.toUpperCase() }}</span>
+            <span class="log-message" v-html="formatLogMessage(log.data)"></span>
+          </div>
         </div>
       </div>
     </div>
 
     <!-- 未选择项目时的提示 -->
-    <div v-else class="no-tunnel-selected">
-      <p>🔍 请从上方选择一个{{ logType === 'tunnel' ? '隧道' : '服务' }}来查看其日志</p>
+    <div v-else class="no-selection-card">
+      <div class="card-body">
+        <div class="empty-state">
+          <p>🔍 请从上方选择一个{{ logType === 'tunnel' ? '隧道' : '服务' }}来查看其日志</p>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -112,17 +136,36 @@
 export default {
   name: 'TunnelLogsPage',
   data() {
+    // 从localStorage恢复状态
+    const savedState = this.loadSavedState();
     return {
       logs: [],
-      selectedTunnelId: '',
-      selectedServerId: null,
-      selectedId: null,
-      logType: 'tunnel', // 'tunnel' 或 'server'
+      selectedTunnelId: savedState.selectedTunnelId || '',
+      selectedServerId: savedState.selectedServerId || null,
+      selectedId: savedState.selectedId || null,
+      logType: savedState.logType || 'tunnel', // 'tunnel' 或 'server'
       tunnels: [],
       servers: [],
       loading: false,
       lastUpdated: null,
       autoRefreshInterval: null
+    }
+  },
+  watch: {
+    /**
+     * 监听selectedId变化，保存状态
+     */
+    selectedId(newVal) {
+      if (newVal) {
+        this.saveState();
+      }
+    },
+    
+    /**
+     * 监听logType变化，保存状态
+     */
+    logType() {
+      this.saveState();
     }
   },
   computed: {
@@ -143,11 +186,80 @@ export default {
     this.loadTunnels();
     this.loadServers();
     this.startAutoRefresh();
+    
+    // 在数据加载完成后，如果有保存的选择状态，尝试加载对应的日志
+    this.$nextTick(() => {
+      setTimeout(() => {
+        this.validateAndRestoreState();
+      }, 1000);
+    });
   },
   beforeUnmount() {
     this.stopAutoRefresh();
   },
   methods: {
+    /**
+     * 从localStorage恢复保存的状态
+     */
+    loadSavedState() {
+      try {
+        const savedState = localStorage.getItem('tunnelLogsPageState');
+        return savedState ? JSON.parse(savedState) : {};
+      } catch (error) {
+        console.error('恢复状态失败:', error);
+        return {};
+      }
+    },
+
+    /**
+     * 保存当前状态到localStorage
+     */
+    saveState() {
+      try {
+        const state = {
+          logType: this.logType,
+          selectedId: this.selectedId,
+          selectedTunnelId: this.selectedTunnelId,
+          selectedServerId: this.selectedServerId
+        };
+        localStorage.setItem('tunnelLogsPageState', JSON.stringify(state));
+      } catch (error) {
+        console.error('保存状态失败:', error);
+      }
+    },
+
+    /**
+     * 验证并恢复保存的状态
+     */
+    validateAndRestoreState() {
+      // 检查保存的日志类型是否还有对应的项目
+      if (this.logType === 'tunnel' && this.selectedId) {
+        const tunnelExists = this.tunnels.some(t => t.id === this.selectedId);
+        if (!tunnelExists) {
+          console.log('保存的隧道不存在，清空选择');
+          this.selectedId = null;
+          this.selectedTunnelId = '';
+          this.saveState();
+          return;
+        }
+      } else if (this.logType === 'server' && this.selectedId) {
+        const serverExists = this.servers.some(s => s.id === this.selectedId);
+        if (!serverExists) {
+          console.log('保存的服务不存在，清空选择');
+          this.selectedId = null;
+          this.selectedServerId = null;
+          this.saveState();
+          return;
+        }
+      }
+
+      // 如果有有效的选择，加载对应的日志
+      if (this.selectedId) {
+        console.log('恢复状态，加载日志:', this.logType, this.selectedId);
+        this.loadLogs();
+      }
+    },
+
     /**
      * 加载隧道列表
      */
@@ -203,6 +315,9 @@ export default {
       this.selectedId = null;
       this.logs = [];
       
+      // 保存状态
+      this.saveState();
+      
       // 加载对应类型的数据
       if (this.logType === 'server') {
         this.loadServers();
@@ -213,6 +328,9 @@ export default {
      * 选择变化处理
      */
     onSelectionChange() {
+      // 保存状态
+      this.saveState();
+      
       // 选择变化时加载对应的日志
       this.loadLogs();
     },
@@ -530,101 +648,191 @@ export default {
 </script>
 
 <style scoped>
-.content-section {
+/* 页面布局 */
+.logs-page {
   padding: 20px;
   max-width: 1200px;
   margin: 0 auto;
 }
 
+/* 页面头部样式 */
 .page-header {
   margin-bottom: 30px;
-  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
-.page-header h2 {
-  margin: 0 0 10px 0;
+.page-header h1 {
+  margin: 0;
   color: #2c3e50;
   font-size: 2em;
+  font-weight: 600;
 }
 
-.page-description {
-  color: #7f8c8d;
+.page-header p {
   margin: 0;
+  color: #7f8c8d;
   font-size: 1.1em;
 }
 
-.tunnel-selector {
+.header-controls {
   display: flex;
   align-items: center;
-  gap: 15px;
-  margin-bottom: 20px;
-  padding: 20px;
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-}
-
-.tunnel-selector label {
-  font-weight: 600;
-  color: #2c3e50;
-  min-width: 80px;
-}
-
-.tunnel-select {
-  flex: 1;
-  padding: 10px 15px;
-  border: 2px solid #ddd;
-  border-radius: 6px;
-  font-size: 14px;
-  background: white;
-  transition: border-color 0.3s;
-}
-
-.tunnel-select:focus {
-  outline: none;
-  border-color: #3498db;
-}
-
-.log-controls {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  margin-bottom: 20px;
-  padding: 15px 20px;
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-}
-
-.log-info {
-  margin-left: auto;
-  display: flex;
   gap: 20px;
-  color: #7f8c8d;
-  font-size: 14px;
 }
 
-.log-container {
+.log-type-selector {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.log-type-selector label {
+  font-weight: 500;
+  color: #2c3e50;
+}
+
+/* 卡片通用样式 */
+.selector-card,
+.log-controls-card,
+.log-display-card,
+.no-selection-card {
   background: white;
-  border-radius: 8px;
+  border-radius: 12px;
   box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  margin-bottom: 20px;
   overflow: hidden;
 }
 
+.card-header {
+  background: #f8f9fa;
+  padding: 20px;
+  border-bottom: 1px solid #e9ecef;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.card-header h3 {
+  margin: 0;
+  color: #2c3e50;
+  font-size: 1.2em;
+  font-weight: 600;
+}
+
+.card-body {
+  padding: 20px;
+}
+
+.card-body-no-padding {
+  padding: 0;
+}
+
+/* 选择器控制区域 */
+.selector-controls {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.form-select {
+  flex: 1;
+  min-width: 250px;
+  padding: 10px 15px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 0.9em;
+  background: white;
+  color: #2c3e50;
+}
+
+.form-select:focus {
+  outline: none;
+  border-color: #3498db;
+  box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+}
+
+/* 日志控制区域 */
+.log-info {
+  display: flex;
+  gap: 20px;
+  color: #7f8c8d;
+  font-size: 0.9em;
+}
+
+.control-buttons {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* 按钮样式 */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9em;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: #3498db;
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #2980b9;
+}
+
+.btn-warning {
+  background: #f39c12;
+  color: white;
+}
+
+.btn-warning:hover:not(:disabled) {
+  background: #e67e22;
+}
+
+.btn-success {
+  background: #2ecc71;
+  color: white;
+}
+
+.btn-success:hover:not(:disabled) {
+  background: #27ae60;
+}
+
+.btn-icon {
+  font-size: 1em;
+}
+
+/* 日志显示区域 */
 .loading {
   text-align: center;
-  padding: 40px;
+  padding: 60px 20px;
   color: #7f8c8d;
 }
 
 .spinner {
-  width: 30px;
-  height: 30px;
-  border: 3px solid #f3f3f3;
-  border-top: 3px solid #3498db;
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #3498db;
   border-radius: 50%;
   animation: spin 1s linear infinite;
-  margin: 0 auto 15px;
+  margin: 0 auto 20px;
 }
 
 @keyframes spin {
@@ -639,11 +847,11 @@ export default {
 }
 
 .empty-logs p:first-child {
-  font-size: 1.2em;
+  font-size: 1.3em;
   margin-bottom: 10px;
 }
 
-.no-tunnel-selected {
+.empty-state {
   text-align: center;
   padding: 60px 20px;
   color: #7f8c8d;
@@ -655,14 +863,15 @@ export default {
   overflow-y: auto;
   font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
   font-size: 13px;
-  line-height: 1.5;
+  line-height: 1.6;
 }
 
 .log-entry {
   display: flex;
-  padding: 8px 15px;
+  padding: 12px 20px;
   border-bottom: 1px solid #f0f0f0;
   transition: background-color 0.2s;
+  align-items: flex-start;
 }
 
 .log-entry:hover {
@@ -675,18 +884,20 @@ export default {
 
 .log-time {
   color: #7f8c8d;
-  min-width: 80px;
+  min-width: 90px;
   font-size: 12px;
+  font-family: inherit;
 }
 
 .log-type {
-  min-width: 60px;
+  min-width: 70px;
   font-weight: bold;
   font-size: 11px;
   text-align: center;
-  padding: 2px 6px;
-  border-radius: 3px;
-  margin-right: 10px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  margin-right: 15px;
+  font-family: inherit;
 }
 
 .log-type.stdout {
@@ -703,6 +914,7 @@ export default {
   flex: 1;
   word-break: break-all;
   white-space: pre-wrap;
+  font-family: inherit;
 }
 
 /* 日志颜色样式 */
@@ -732,86 +944,79 @@ export default {
   text-decoration: underline;
 }
 
-/* 按钮样式 */
-.btn {
-  padding: 8px 16px;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  transition: all 0.3s;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.btn-sm {
-  padding: 6px 12px;
-  font-size: 13px;
-}
-
-.btn-primary {
-  background-color: #3498db;
-  color: white;
-}
-
-.btn-primary:hover:not(:disabled) {
-  background-color: #2980b9;
-}
-
-.btn-warning {
-  background-color: #f39c12;
-  color: white;
-}
-
-.btn-warning:hover:not(:disabled) {
-  background-color: #e67e22;
-}
-
-.btn-success {
-  background-color: #27ae60;
-  color: white;
-}
-
-.btn-success:hover:not(:disabled) {
-  background-color: #229954;
-}
-
-.btn-icon {
-  font-size: 1em;
-}
-
 /* 响应式设计 */
 @media (max-width: 768px) {
-  .tunnel-selector {
+  .logs-page {
+    padding: 15px;
+  }
+  
+  .page-header {
+    margin-bottom: 20px;
+  }
+  
+  .page-header h1 {
+    font-size: 1.5em;
+  }
+  
+  .header-controls {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 15px;
+  }
+  
+  .selector-controls {
     flex-direction: column;
     align-items: stretch;
   }
   
-  .log-controls {
-    flex-wrap: wrap;
+  .form-select {
+    min-width: auto;
+  }
+  
+  .card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
   }
   
   .log-info {
+    flex-direction: column;
+    gap: 5px;
+  }
+  
+  .control-buttons {
+    flex-direction: column;
+  }
+  
+  .btn {
     width: 100%;
-    margin-top: 10px;
-    justify-content: space-between;
+    justify-content: center;
   }
   
   .log-entry {
     flex-direction: column;
-    gap: 5px;
+    gap: 8px;
+    padding: 15px;
   }
   
   .log-time,
   .log-type {
     min-width: auto;
+  }
+}
+
+@media (max-width: 480px) {
+  .logs-page {
+    padding: 10px;
+  }
+  
+  .card-header,
+  .card-body {
+    padding: 15px;
+  }
+  
+  .log-content {
+    max-height: 400px;
   }
 }
 </style>
