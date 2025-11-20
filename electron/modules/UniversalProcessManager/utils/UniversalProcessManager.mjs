@@ -437,6 +437,10 @@ class UniversalProcessManager extends EventEmitter {
     processInfo.endTime = new Date();
 
     this.emit('process-exited', pid, processInfo);
+    
+    // 进程退出后从进程管理中删除，释放内存
+    this.processes.delete(pid);
+    console.log(`进程 ${pid} 信息已从内存中清理，释放资源`);
   }
 
   /**

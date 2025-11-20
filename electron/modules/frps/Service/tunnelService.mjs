@@ -141,11 +141,17 @@ class TunnelService {
         // 如果进程意外退出，更新状态
         if (processInfo.status === 'exited' && processInfo.exitCode !== 0) {
           this.updateTunnelStatusOnError(tunnelId, `进程意外退出，退出码: ${processInfo.exitCode}`);
+          // 清理隧道日志
+          this.clearTunnelLogs(tunnelId);
+          console.log(`隧道 ${tunnelId} 的日志已清理（异常退出）`);
         } else if (processInfo.exitCode === 0) {
           // 正常退出，更新状态为stopped
           this.updateTunnelStatus(tunnelId, 'stopped');
           // 从映射中移除
           tunnelProcessMap.delete(tunnelId);
+          // 清理隧道日志
+          this.clearTunnelLogs(tunnelId);
+          console.log(`隧道 ${tunnelId} 的日志已清理（正常退出）`);
         }
       }
     });
@@ -171,7 +177,10 @@ class TunnelService {
       // 从映射中移除
       tunnelProcessMap.delete(tunnelId);
       
-      console.error(`隧道 ${tunnelId} 状态更新为错误:`, errorMessage);
+      // 清理隧道日志
+      this.clearTunnelLogs(tunnelId);
+      console.log(`隧道 ${tunnelId} 状态更新为错误:`, errorMessage);
+      console.log(`隧道 ${tunnelId} 的日志已清理（错误状态）`);
     }
   }
 
@@ -453,6 +462,10 @@ class TunnelService {
         // 从映射中移除
         tunnelProcessMap.delete(id);
       }
+
+      // 清理隧道日志
+      this.clearTunnelLogs(id);
+      console.log(`隧道 ${id} 的日志已清理`);
 
       // 更新隧道状态
       const tunnels = this.getAllTunnels();
