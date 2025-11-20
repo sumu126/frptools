@@ -75,6 +75,14 @@
             <span class="btn-icon">🗑️</span>
             删除
           </button>
+          <button 
+            class="btn btn-primary btn-sm"
+            @click="copyConnectionAddress(tunnel)"
+            title="复制连接地址"
+          >
+            <span class="btn-icon">📋</span>
+            复制地址
+          </button>
         </div>
       </div>
       
@@ -333,6 +341,69 @@ export default {
           this.showNotification('删除失败', error.message, 'error')
         }
       }
+    },
+    
+    async copyConnectionAddress(tunnel) {
+      try {
+        // 从远程地址中提取 server_addr
+        const remoteAddress = tunnel.remoteAddress || ''
+        const serverAddr = this.extractServerAddr(remoteAddress)
+        const remotePort = tunnel.remotePort || ''
+        
+        if (!serverAddr || !remotePort) {
+          this.showNotification('复制失败', '连接地址信息不完整', 'error')
+          return
+        }
+        
+        const connectionAddress = `${serverAddr}:${remotePort}`
+        
+        // 使用现代浏览器的 Clipboard API
+        await navigator.clipboard.writeText(connectionAddress)
+        this.showNotification('复制成功', `连接地址 "${connectionAddress}" 已复制到剪贴板`, 'success')
+      } catch (error) {
+        console.error('复制连接地址失败:', error)
+        // 降级方案：使用传统方法
+        try {
+          const remoteAddress = tunnel.remoteAddress || ''
+          const serverAddr = this.extractServerAddr(remoteAddress)
+          const remotePort = tunnel.remotePort || ''
+          const connectionAddress = `${serverAddr}:${remotePort}`
+          
+          // 创建临时文本区域
+          const textArea = document.createElement('textarea')
+          textArea.value = connectionAddress
+          textArea.style.position = 'fixed'
+          textArea.style.opacity = '0'
+          document.body.appendChild(textArea)
+          textArea.select()
+          document.execCommand('copy')
+          document.body.removeChild(textArea)
+          
+          this.showNotification('复制成功', `连接地址 "${connectionAddress}" 已复制到剪贴板`, 'success')
+        } catch (fallbackError) {
+          console.error('降级复制方法也失败:', fallbackError)
+          this.showNotification('复制失败', '无法复制连接地址', 'error')
+        }
+      }
+    },
+    
+    extractServerAddr(remoteAddress) {
+      // 从远程地址中提取 server_addr
+      // 如果远程地址包含端口，则只取IP部分
+      if (!remoteAddress) return ''
+      
+      // 移除协议前缀（如果有）
+      let address = remoteAddress
+      if (address.includes('://')) {
+        address = address.split('://')[1]
+      }
+      
+      // 如果包含端口，只取IP部分
+      if (address.includes(':')) {
+        address = address.split(':')[0]
+      }
+      
+      return address
     }
   }
 }
