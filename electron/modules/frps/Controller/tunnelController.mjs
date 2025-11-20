@@ -126,6 +126,27 @@ function tunnelController() {
     }
   });
 
+  // 获取隧道日志
+  ipcMain.handle('tunnel:getLogs', (event, id) => {
+    try {
+      return tunnelService.getTunnelLogs(id);
+    } catch (error) {
+      console.error('获取隧道日志失败:', error);
+      return { error: error.message };
+    }
+  });
+
+  // 清除隧道日志
+  ipcMain.handle('tunnel:clearLogs', (event, id) => {
+    try {
+      tunnelService.clearTunnelLogs(id);
+      return { success: true };
+    } catch (error) {
+      console.error('清除隧道日志失败:', error);
+      return { error: error.message };
+    }
+  });
+
   console.log('隧道控制器初始化完成');
 }
 

@@ -31,7 +31,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
       clearAll: () => ipcRenderer.invoke('tunnel:clearAll'),
       export: () => ipcRenderer.invoke('tunnel:export'),
       import: (tunnelConfigs) => ipcRenderer.invoke('tunnel:import', tunnelConfigs),
-      getJsonConfig: (id) => ipcRenderer.invoke('tunnel:getJsonConfig', id)
+      getJsonConfig: (id) => ipcRenderer.invoke('tunnel:getJsonConfig', id),
+      getLogs: (id) => ipcRenderer.invoke('tunnel:getLogs', id),
+      clearLogs: (id) => ipcRenderer.invoke('tunnel:clearLogs', id)
     },
   // FRPS配置管理
   frpsConfig: {

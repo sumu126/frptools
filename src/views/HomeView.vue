@@ -32,6 +32,11 @@
         v-if="activeNav === 'server-settings'" 
       />
 
+      <!-- 隧道日志页面 -->
+      <TunnelLogsPage 
+        v-if="activeNav === 'tunnel-logs'" 
+      />
+
       <!-- 设置页面 -->
       <SettingsPage 
         v-if="activeNav === 'settings'" 
@@ -53,6 +58,7 @@ import SettingsPage from './SettingsPage.vue'
 import AboutPage from './AboutPage.vue'
 import ClientSettingsPage from './ClientSettingsPage.vue'
 import ServerSettingsPage from './ServerSettingsPage.vue'
+import TunnelLogsPage from './TunnelLogsPage.vue'
 
 export default {
   name: 'HomeView',
@@ -60,7 +66,8 @@ export default {
     SettingsPage,
     AboutPage,
     ClientSettingsPage,
-    ServerSettingsPage
+    ServerSettingsPage,
+    TunnelLogsPage
   },
   data() {
     return {
@@ -70,6 +77,7 @@ export default {
       navItems: [
         { id: 'client-settings', text: '隧道管理', icon: '💻' },
         { id: 'server-settings', text: '服务管理', icon: '🌐' },
+        { id: 'tunnel-logs', text: '隧道日志', icon: '📋' },
         { id: 'settings', text: '设置', icon: '⚙️' },
         { id: 'about', text: '关于', icon: 'ℹ️' }
       ]

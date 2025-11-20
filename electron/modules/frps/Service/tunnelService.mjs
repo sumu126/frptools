@@ -13,28 +13,6 @@ const tunnelProcessMap = new Map();
 // 存储隧道ID与日志的映射
 const tunnelLogsMap = new Map();
 
-// 监听UniversalProcessManager的事件
-manager.on('process-output', (pid, logEntry) => {
-  // 查找对应的隧道ID
-  const tunnelId = getTunnelIdByPid(pid);
-  if (tunnelId) {
-    // 存储日志
-    let logs = tunnelLogsMap.get(tunnelId) || [];
-    logs.push(logEntry);
-    
-    // 限制日志数量
-    if (logs.length > 1000) {
-      logs = logs.slice(-500);
-    }
-    
-    tunnelLogsMap.set(tunnelId, logs);
-    
-    console.log(`隧道 ${tunnelId} 输出:`, logEntry.data);
-  }
-});
-
-// 事件监听器将在TunnelService实例化后设置
-
 /**
  * 根据PID获取隧道ID
  * @param {number} pid 进程PID
@@ -120,6 +98,32 @@ class TunnelService {
    * 设置进程事件监听器
    */
   setupProcessEventListeners() {
+    // 监听进程输出事件
+    manager.on('process-output', (pid, logEntry) => {
+      console.log(`收到进程输出事件 - PID: ${pid}, 数据:`, logEntry.data);
+      
+      // 查找对应的隧道ID
+      const tunnelId = getTunnelIdByPid(pid);
+      console.log(`PID ${pid} 对应的隧道ID:`, tunnelId);
+      
+      if (tunnelId) {
+        // 存储日志
+        let logs = tunnelLogsMap.get(tunnelId) || [];
+        logs.push(logEntry);
+        
+        // 限制日志数量
+        if (logs.length > 1000) {
+          logs = logs.slice(-500);
+        }
+        
+        tunnelLogsMap.set(tunnelId, logs);
+        
+        console.log(`隧道 ${tunnelId} 输出已存储，当前日志数量:`, logs.length);
+      } else {
+        console.log(`PID ${pid} 未找到对应的隧道ID，当前运行的隧道映射:`, Array.from(tunnelProcessMap.entries()));
+      }
+    });
+
     // 监听进程错误事件
     manager.on('process-error', (pid, processInfo, error) => {
       const tunnelId = getTunnelIdByPid(pid);
@@ -373,6 +377,8 @@ class TunnelService {
       // 获取frpc可执行文件路径
       const frpcPath = getFrpcPath();
       
+      console.log(`启动隧道 ${id}，配置文件: ${configPath}，frpc路径: ${frpcPath}`);
+      
       // 启动frpc进程，使用-c参数传入配置文件路径
       const result = await manager.startApplication(frpcPath, ['-c', configPath], {
         windowsHide: true
@@ -386,8 +392,11 @@ class TunnelService {
         throw new Error(`启动frpc失败: ${result.error}`);
       }
       
+      console.log(`隧道 ${id} 启动成功，PID: ${result.pid}`);
+      
       // 存储隧道ID与进程PID的映射
       tunnelProcessMap.set(id, result.pid);
+      console.log(`隧道ID ${id} 与 PID ${result.pid} 的映射已建立`);
       
       // 更新隧道状态
       const tunnels = this.getAllTunnels();
@@ -564,7 +573,10 @@ class TunnelService {
    * @returns {Array} 日志数组
    */
   getTunnelLogs(id) {
-    return tunnelLogsMap.get(id) || [];
+    const logs = tunnelLogsMap.get(id) || [];
+    console.log(`获取隧道 ${id} 的日志，数量: ${logs.length}`);
+    console.log(`当前所有隧道日志映射:`, Array.from(tunnelLogsMap.entries()));
+    return logs;
   }
   
   /**
