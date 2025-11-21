@@ -22,9 +22,14 @@
 
     <!-- 右侧内容区域 -->
     <div class="content-area">
+      <!-- 主页 -->
+      <IndexPage 
+        v-if="activeNav === 'home' " 
+      />
+      
       <!-- 客户端设置页面 -->
       <ClientSettingsPage 
-        v-if="activeNav === 'client-settings'" 
+        v-if="activeNav === 'client-settings' " 
       />
 
       <!-- 服务端设置页面 -->
@@ -59,6 +64,7 @@ import AboutPage from './AboutPage.vue'
 import ClientSettingsPage from './ClientSettingsPage.vue'
 import ServerSettingsPage from './ServerSettingsPage.vue'
 import TunnelLogsPage from './TunnelLogsPage.vue'
+import IndexPage from './IndexPage.vue'
 
 export default {
   name: 'HomeView',
@@ -67,7 +73,8 @@ export default {
     AboutPage,
     ClientSettingsPage,
     ServerSettingsPage,
-    TunnelLogsPage
+    TunnelLogsPage,
+    IndexPage
   },
   data() {
     return {
@@ -75,6 +82,7 @@ export default {
       theme: 'dark',
       activeNav: 'home',
       navItems: [
+        { id: 'home', text: '主页', icon: '🏠' },
         { id: 'client-settings', text: '隧道管理', icon: '💻' },
         { id: 'server-settings', text: '服务管理', icon: '🌐' },
         { id: 'tunnel-logs', text: '日志', icon: '📋' },
