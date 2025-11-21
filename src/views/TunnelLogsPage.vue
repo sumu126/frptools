@@ -3,9 +3,15 @@
     <div class="page-header">
       <h1>日志管理</h1>
       <p>查看和管理隧道与服务端日志</p>
-      <div class="header-controls">
-        <div class="log-type-selector">
-          <label>日志类型：</label>
+    </div>
+
+    <!-- 日志类型选择卡片 -->
+    <div class="selector-card">
+      <div class="card-header">
+        <h3>选择日志类型</h3>
+      </div>
+      <div class="card-body">
+        <div class="selector-controls">
           <select 
             id="log-type-select" 
             v-model="logType" 
