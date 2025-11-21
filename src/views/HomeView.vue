@@ -1,5 +1,5 @@
 <template>
-  <div class="layout-container">
+  <div class="layout-container" :class="{ dark: theme === 'dark' }">
     <!-- 左侧导航栏 -->
     <div class="sidebar">
       <div class="sidebar-header">
@@ -200,5 +200,53 @@ export default {
   overflow-y: auto;
   background: rgba(236, 240, 241, var(--window-opacity, 1));
   /* 移除模糊效果，避免影响壁纸显示 */
+  scroll-behavior: smooth;
+}
+
+/* 自定义滚动条样式 - WebKit浏览器 */
+.content-area::-webkit-scrollbar {
+  width: 8px;
+}
+
+.content-area::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 4px;
+}
+
+.content-area::-webkit-scrollbar-thumb {
+  background: rgba(180, 180, 180, 0.3);
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+
+.content-area::-webkit-scrollbar-thumb:hover {
+  background: rgba(180, 180, 180, 0.6);
+}
+
+.content-area::-webkit-scrollbar-button {
+  display: none;
+}
+
+/* Firefox 滚动条样式 */
+.content-area {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(180, 180, 180, 0.3) transparent;
+}
+
+/* 暗色主题滚动条样式 */
+.layout-container.dark .content-area::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.layout-container.dark .content-area::-webkit-scrollbar-thumb {
+  background: rgba(100, 100, 100, 0.4);
+}
+
+.layout-container.dark .content-area::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 100, 100, 0.7);
+}
+
+.layout-container.dark .content-area {
+  scrollbar-color: rgba(100, 100, 100, 0.4) transparent;
 }
 </style>
