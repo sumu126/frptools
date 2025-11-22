@@ -55,14 +55,14 @@ function getFrpcPath() {
 function generateFrpcConfig(tunnel, tunnelId) {
   const config = tunnel.tunnelJson;
   const configContent = `[common]
-server_addr = ${config.yclocation}
+server_addr = "${config.yclocation}"
 server_port = ${config.ycprot}
 ${config.token ? `token = "${config.token}"` : ''}
 
 [${config.frp}]
 name = "${config.frp}"
-type = ${config.frptype}
-local_ip = ${config.location}
+type = "${config.frptype}"
+local_ip = "${config.location}"
 local_port = ${config.prot}
 remote_port = ${config.yckfprot}
 `;
