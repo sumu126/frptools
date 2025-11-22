@@ -59,7 +59,7 @@ server_addr = ${config.yclocation}
 server_port = ${config.ycprot}
 ${config.token ? `token = "${config.token}"` : ''}
 
-[[proxies]]
+[${config.frp}]
 name = "${config.frp}"
 type = ${config.frptype}
 local_ip = ${config.location}
