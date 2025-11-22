@@ -48,39 +48,41 @@
     <!-- 配置编辑模态框 -->
     <div v-if="showEditModal" class="modal-overlay" @click="closeModal">
       <div class="modal-content" @click.stop>
-        <div class="modal-header">
-          <h3>{{ editingConfig ? '编辑FRPS配置' : '添加FRPS配置' }}</h3>
-          <button class="close-btn" @click="closeModal">&times;</button>
-        </div>
-        
-        <div class="modal-body">
-          <div class="form-group">
-            <label>配置名称:</label>
-            <input v-model="configForm.name" type="text" placeholder="输入配置名称">
+        <div class="modal-scroll">
+          <div class="modal-header">
+            <h3>{{ editingConfig ? '编辑FRPS配置' : '添加FRPS配置' }}</h3>
+            <button class="close-btn" @click="closeModal">&times;</button>
           </div>
           
-          <div class="form-group">
-            <label>监听端口:</label>
-            <input v-model="configForm.bindPort" type="number" placeholder="7000" min="1" max="65535">
+          <div class="modal-body">
+            <div class="form-group">
+              <label>配置名称:</label>
+              <input v-model="configForm.name" type="text" placeholder="输入配置名称">
+            </div>
+            
+            <div class="form-group">
+              <label>监听端口:</label>
+              <input v-model="configForm.bindPort" type="number" placeholder="7000" min="1" max="65535">
+            </div>
+            
+            <div class="form-group">
+              <label>认证方式:</label>
+              <select v-model="configForm.authMethod">
+                <option value="none">无认证</option>
+                <option value="token">Token认证</option>
+              </select>
+            </div>
+            
+            <div v-if="configForm.authMethod === 'token'" class="form-group">
+              <label>认证令牌:</label>
+              <input v-model="configForm.authToken" type="text" placeholder="输入认证令牌">
+            </div>
           </div>
           
-          <div class="form-group">
-            <label>认证方式:</label>
-            <select v-model="configForm.authMethod">
-              <option value="none">无认证</option>
-              <option value="token">Token认证</option>
-            </select>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" @click="closeModal">取消</button>
+            <button class="btn btn-primary" @click="saveConfig">保存</button>
           </div>
-          
-          <div v-if="configForm.authMethod === 'token'" class="form-group">
-            <label>认证令牌:</label>
-            <input v-model="configForm.authToken" type="text" placeholder="输入认证令牌">
-          </div>
-        </div>
-        
-        <div class="modal-footer">
-          <button class="btn btn-secondary" @click="closeModal">取消</button>
-          <button class="btn btn-primary" @click="saveConfig">保存</button>
         </div>
       </div>
     </div>
@@ -88,17 +90,19 @@
     <!-- TOML内容查看模态框 -->
     <div v-if="showTomlModal" class="modal-overlay" @click="closeTomlModal">
       <div class="modal-content toml-modal" @click.stop>
-        <div class="modal-header">
-          <h3>frps.toml 配置内容</h3>
-          <button class="close-btn" @click="closeTomlModal">&times;</button>
-        </div>
-        
-        <div class="modal-body">
-          <pre class="toml-content">{{ tomlContent }}</pre>
-        </div>
-        
-        <div class="modal-footer">
-          <button class="btn btn-secondary" @click="closeTomlModal">关闭</button>
+        <div class="modal-scroll">
+          <div class="modal-header">
+            <h3>frps.toml 配置内容</h3>
+            <button class="close-btn" @click="closeTomlModal">&times;</button>
+          </div>
+          
+          <div class="modal-body">
+            <pre class="toml-content">{{ tomlContent }}</pre>
+          </div>
+          
+          <div class="modal-footer">
+            <button class="btn btn-secondary" @click="closeTomlModal">关闭</button>
+          </div>
         </div>
       </div>
     </div>
@@ -484,13 +488,13 @@ export default {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.6);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  backdrop-filter: blur(5px);
-  animation: fadeIn 0.3s ease-out;
+  backdrop-filter: blur(4px);
+  animation: fadeIn 0.2s ease-out;
 }
 
 @keyframes fadeIn {
@@ -499,42 +503,53 @@ export default {
 }
 
 .modal-content {
-  background: white;
-  border-radius: 16px;
-  width: 500px;
-  max-width: 90vw;
-  max-height: 80vh;
-  overflow-y: auto;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-  animation: slideIn 0.3s ease-out;
-  scroll-behavior: smooth;
-}
+    background: white;
+    border-radius: 16px;
+    width: 500px;
+    max-width: 90vw;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+    animation: slideIn 0.3s ease-out;
+    position: relative;
+    overflow: hidden;
+  }
 
-/* 自定义滚动条样式 */
-.modal-content::-webkit-scrollbar {
-  width: 6px;
-}
-
-.modal-content::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 3px;
-}
-
-.modal-content::-webkit-scrollbar-thumb {
-  background: #cbd5e0;
-  border-radius: 3px;
-  transition: background 0.2s ease;
-}
-
-.modal-content::-webkit-scrollbar-thumb:hover {
-  background: #a0aec0;
-}
-
-/* Firefox 滚动条样式 */
-.modal-content {
-  scrollbar-width: thin;
-  scrollbar-color: #cbd5e0 #f1f1f1;
-}
+  .modal-scroll {
+    flex: 1;
+    overflow-y: auto;
+    /* 启用平滑滚动 */
+    scroll-behavior: smooth;
+    /* 为滚动容器本身也添加圆角 */
+    border-radius: 16px;
+  }
+  
+  /* 自定义滚动条样式 - WebKit浏览器 */
+  .modal-scroll::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  .modal-scroll::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+  }
+  
+  .modal-scroll::-webkit-scrollbar-thumb {
+    background: #cbd5e0;
+    border-radius: 3px;
+    transition: background-color 0.2s ease;
+  }
+  
+  .modal-scroll::-webkit-scrollbar-thumb:hover {
+    background: #a0aec0;
+  }
+  
+  /* 自定义滚动条样式 - Firefox */
+  .modal-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e0 #f1f1f1;
+  }
 
 @keyframes slideIn {
   from {
@@ -555,44 +570,45 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px;
-  border-bottom: 1px solid #e0e0e0;
+  padding: 24px 24px 20px;
+  border-bottom: 1px solid #f0f0f0;
 }
 
 .modal-header h3 {
   margin: 0;
   color: #2c3e50;
   font-size: 1.25em;
+  font-weight: 600;
 }
 
 .close-btn {
   background: none;
   border: none;
-  font-size: 1.5em;
+  font-size: 1.75em;
   cursor: pointer;
-  color: #7f8c8d;
-  padding: 0;
-  width: 30px;
-  height: 30px;
+  color: #95a5a6;
+  padding: 4px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
   transition: all 0.2s ease;
+  line-height: 1;
+  height: 32px;
+  width: 32px;
 }
 
 .close-btn:hover {
+  background: #f8f9fa;
   color: #e74c3c;
-  background-color: #f8f9fa;
-  transform: scale(1.1);
 }
 
 .modal-body {
-  padding: 20px;
+  padding: 24px;
 }
 
 .form-group {
-  margin-bottom: 20px;
+  margin-bottom: 24px;
 }
 
 .form-group label {
@@ -600,45 +616,49 @@ export default {
   margin-bottom: 8px;
   font-weight: 500;
   color: #2c3e50;
+  font-size: 0.95em;
 }
 
 .form-group input,
-.form-group select,
-.form-group textarea {
+.form-group select {
   width: 100%;
-  padding: 10px 12px;
-  border: 1px solid #ddd;
+  padding: 12px 14px;
+  border: 1px solid #e0e0e0;
   border-radius: 8px;
-  font-size: 1em;
-  box-sizing: border-box;
-  transition: all 0.2s ease;
-  background-color: white;
+  font-size: 0.95em;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  background-color: #ffffff;
 }
 
 .form-group input:focus,
-.form-group select:focus,
-.form-group textarea:focus {
+.form-group select:focus {
   outline: none;
   border-color: #3498db;
-  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.15);
-  background-color: #f8f9ff;
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
 }
 
-/* 自定义下拉箭头样式 */
+/* 添加输入框占位符样式 */
+.form-group input::placeholder,
+.form-group select::placeholder {
+  color: #bdc3c7;
+}
+
+/* 改善select下拉框样式 */
 .form-group select {
-  appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' viewBox='0 0 24 24' stroke='%236b7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%237f8c8d' viewBox='0 0 16 16'%3E%3Cpath d='M8 12a.5.5 0 0 0 .5-.5V5.707l2.146 2.147a.5.5 0 0 0 .708-.708l-3-3a.5.5 0 0 0-.708 0l-3 3a.5.5 0 1 0 .708.708L7.5 5.707V11.5a.5.5 0 0 0 .5.5z'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
-  background-position: right 10px center;
-  padding-right: 35px;
+  background-position: right 12px center;
+  background-size: 16px;
+  appearance: none;
 }
 
 .modal-footer {
+  padding: 20px 24px 24px;
+  border-top: 1px solid #f0f0f0;
   display: flex;
+  gap: 12px;
   justify-content: flex-end;
-  gap: 10px;
-  padding: 20px;
-  border-top: 1px solid #e0e0e0;
 }
 
 .toml-content {
@@ -654,28 +674,26 @@ export default {
   word-break: break-all;
 }
 
-/* 响应式设计 */
+/* 响应式设计增强 */
 @media (max-width: 768px) {
-  .server-settings-page {
-    padding: 15px;
-  }
-  
-  .configs-list {
-    grid-template-columns: 1fr;
-  }
-  
-  .config-actions {
-    flex-direction: column;
-    width: 100%;
-  }
-  
-  .config-actions .btn {
-    width: 100%;
-    justify-content: center;
-  }
-  
   .modal-content {
     width: 95vw;
+    max-width: 95vw;
+    margin: 20px;
+  }
+  
+  .modal-header,
+  .modal-body,
+  .modal-footer {
+    padding: 20px;
+  }
+  
+  .modal-footer {
+    flex-direction: column-reverse;
+  }
+  
+  .modal-footer button {
+    width: 100%;
   }
 }
 </style>

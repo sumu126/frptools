@@ -98,57 +98,59 @@
     <!-- 隧道编辑模态框 -->
     <div v-if="showEditModal" class="modal-overlay">
       <div class="modal-content">
-        <div class="modal-header">
-          <h3>{{ editingTunnel ? '编辑隧道' : '添加新隧道' }}</h3>
-          <button class="modal-close" @click="closeModal">×</button>
-        </div>
-        
-        <div class="modal-body">
-          <div class="form-group">
-            <label>隧道名称:</label>
-            <input v-model="tunnelForm.name" type="text" placeholder="输入隧道名称">
+        <div class="modal-scroll">
+          <div class="modal-header">
+            <h3>{{ editingTunnel ? '编辑隧道' : '添加新隧道' }}</h3>
+            <button class="modal-close" @click="closeModal">×</button>
           </div>
           
-          <div class="form-group">
-            <label>本地地址:</label>
-            <input v-model="tunnelForm.localAddress" type="text" placeholder="127.0.0.1:8080">
+          <div class="modal-body">
+            <div class="form-group">
+              <label>隧道名称:</label>
+              <input v-model="tunnelForm.name" type="text" placeholder="输入隧道名称">
+            </div>
+            
+            <div class="form-group">
+              <label>本地地址:</label>
+              <input v-model="tunnelForm.localAddress" type="text" placeholder="127.0.0.1:8080">
+            </div>
+            
+            <div class="form-group">
+              <label>远程地址:</label>
+              <input v-model="tunnelForm.remoteAddress" type="text" placeholder="example.com:80">
+            </div>
+            
+            <div class="form-group">
+              <label>远程开放端口:</label>
+              <input v-model="tunnelForm.remotePort" type="number" placeholder="8080" min="1" max="65535">
+            </div>
+            
+            <div class="form-group">
+              <label>协议类型:</label>
+              <select v-model="tunnelForm.protocol">
+                <option value="tcp">TCP</option>
+                <option value="UDP">UDP</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label>认证方式:</label>
+              <select v-model="tunnelForm.authType">
+                <option value="none">无认证</option>
+                <option value="token">Token认证</option>
+              </select>
+            </div>
+            
+            <div v-if="tunnelForm.authType !== 'none'" class="form-group">
+              <label>认证密钥:</label>
+              <input v-model="tunnelForm.authKey" type="password" placeholder="输入认证密钥">
+            </div>
           </div>
           
-          <div class="form-group">
-            <label>远程地址:</label>
-            <input v-model="tunnelForm.remoteAddress" type="text" placeholder="example.com:80">
+          <div class="modal-footer">
+            <button class="btn btn-secondary" @click="closeModal">取消</button>
+            <button class="btn btn-primary" @click="saveTunnel">保存</button>
           </div>
-          
-          <div class="form-group">
-            <label>远程开放端口:</label>
-            <input v-model="tunnelForm.remotePort" type="number" placeholder="8080" min="1" max="65535">
-          </div>
-          
-          <div class="form-group">
-            <label>协议类型:</label>
-            <select v-model="tunnelForm.protocol">
-              <option value="tcp">TCP</option>
-              <option value="UDP">UDP</option>
-            </select>
-          </div>
-          
-          <div class="form-group">
-            <label>认证方式:</label>
-            <select v-model="tunnelForm.authType">
-              <option value="none">无认证</option>
-              <option value="token">Token认证</option>
-            </select>
-          </div>
-          
-          <div v-if="tunnelForm.authType !== 'none'" class="form-group">
-            <label>认证密钥:</label>
-            <input v-model="tunnelForm.authKey" type="password" placeholder="输入认证密钥">
-          </div>
-        </div>
-        
-        <div class="modal-footer">
-          <button class="btn btn-secondary" @click="closeModal">取消</button>
-          <button class="btn btn-primary" @click="saveTunnel">保存</button>
         </div>
       </div>
     </div>
@@ -668,36 +670,45 @@ export default {
     width: 500px;
     max-width: 90vw;
     max-height: 80vh;
-    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
     animation: slideIn 0.3s ease-out;
     position: relative;
+    overflow: hidden;
+  }
+
+  .modal-scroll {
+    flex: 1;
+    overflow-y: auto;
     /* 启用平滑滚动 */
     scroll-behavior: smooth;
+    /* 为滚动容器本身也添加圆角 */
+    border-radius: 16px;
   }
   
   /* 自定义滚动条样式 - WebKit浏览器 */
-  .modal-content::-webkit-scrollbar {
+  .modal-scroll::-webkit-scrollbar {
     width: 6px;
   }
   
-  .modal-content::-webkit-scrollbar-track {
+  .modal-scroll::-webkit-scrollbar-track {
     background: #f1f1f1;
     border-radius: 3px;
   }
   
-  .modal-content::-webkit-scrollbar-thumb {
+  .modal-scroll::-webkit-scrollbar-thumb {
     background: #cbd5e0;
     border-radius: 3px;
     transition: background-color 0.2s ease;
   }
   
-  .modal-content::-webkit-scrollbar-thumb:hover {
+  .modal-scroll::-webkit-scrollbar-thumb:hover {
     background: #a0aec0;
   }
   
   /* 自定义滚动条样式 - Firefox */
-  .modal-content {
+  .modal-scroll {
     scrollbar-width: thin;
     scrollbar-color: #cbd5e0 #f1f1f1;
   }
