@@ -134,7 +134,6 @@ class WallpaperService {
         
         // 验证保存是否成功
         const saved = storeManager.get(this.opacityKey);
-        console.log('验证保存的透明度:', saved);
         return opacity;
     }
 
