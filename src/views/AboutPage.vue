@@ -11,7 +11,7 @@
             <p><strong>许可证:</strong> MIT</p>
           </div>
           <div class="app-logo">
-            <img src="@/assets/icon.png" alt="应用图标">
+            <img src="@/assets/icon.png" alt="应用图标" draggable="false" ondragstart="return false;">
           </div>
         </div>
         <div class="contact-info">
