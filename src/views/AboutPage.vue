@@ -6,7 +6,7 @@
         <div class="app-header">
           <div class="app-info">
             <p><strong>关于:</strong> frptools</p>
-            <p><strong>版本:</strong> 0.0.1</p>
+            <p><strong>版本:</strong> 0.0.2</p>
             <p><strong>描述:</strong> 一个frp的GUI工具</p>
             <p><strong>许可证:</strong> MIT</p>
           </div>

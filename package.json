@@ -3,7 +3,7 @@
   "description": "一个frpGUI工具",
   "author": "sumu126,CryMark",
   "homepage": "https://github.com/sumu126/frptools",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "private": true,
   "main": "electron/main.mjs",
   "type": "module",
