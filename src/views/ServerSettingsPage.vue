@@ -285,12 +285,14 @@ export default {
     },
 
     showNotification(title, message, type = 'info') {
-      // 使用Element Plus的通知组件
+      // 使用Element Plus的通知组件，添加偏移量避免与头部重合
       if (this.$notify) {
         this.$notify({
           title: title,
           message: message,
-          type: type
+          type: type,
+          position: 'top-right',
+          offset: 40 
         })
       } else {
         // 备用方案：使用浏览器原生通知

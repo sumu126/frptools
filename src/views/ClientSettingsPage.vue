@@ -198,13 +198,14 @@ export default {
   methods: {
     // 显示通知的通用方法
     showNotification(title, message, type = 'info') {
-      // 使用Element Plus的通知组件
+      // 使用Element Plus的通知组件，添加偏移量避免与头部重合
       this.$notify({
         title: title,
         message: message,
         type: type,
         duration: 3000,
-        position: 'top-right'
+        position: 'top-right',
+        offset: 40 
       })
     },
     // 加载隧道数据
