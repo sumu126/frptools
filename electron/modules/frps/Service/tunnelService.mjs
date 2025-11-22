@@ -54,17 +54,17 @@ function getFrpcPath() {
  */
 function generateFrpcConfig(tunnel, tunnelId) {
   const config = tunnel.tunnelJson;
-  const configContent = `[common]
-server_addr = "${config.yclocation}"
-server_port = ${config.ycprot}
-${config.token ? `token = "${config.token}"` : ''}
+  const configContent = `
+serverAddr = "${config.yclocation}"
+serverPort = ${config.ycprot}
+${config.token ? `auth.token = "${config.token}"` : ''}
 
-[${config.frp}]
+[[proxies]]
 name = "${config.frp}"
 type = "${config.frptype}"
-local_ip = "${config.location}"
-local_port = ${config.prot}
-remote_port = ${config.yckfprot}
+localIP = "${config.location}"
+localPort = ${config.prot}
+remotePort = ${config.yckfprot}
 `;
   
   // 获取frpc可执行文件路径和目录
