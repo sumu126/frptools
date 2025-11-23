@@ -129,7 +129,7 @@
               <label>协议类型:</label>
               <select v-model="tunnelForm.protocol">
                 <option value="tcp">TCP</option>
-                <option value="UDP">UDP</option>
+                <option value="udp">UDP</option>
               </select>
             </div>
             
