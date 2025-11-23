@@ -126,6 +126,42 @@
         </div>
       </div>
     </div>
+    
+    <!-- 错误日志显示卡片 -->
+    <div class="error-log-display-card" v-if="selectedId">
+      <div class="card-header">
+        <h3>错误日志</h3>
+        <div class="log-info">
+          <span>错误日志条数：{{ errorLogs.length }}</span>
+        </div>
+      </div>
+      <div class="card-body card-body-no-padding">
+        <div v-if="loading" class="loading">
+          <div class="spinner"></div>
+          <p>加载错误日志中...</p>
+        </div>
+        <div v-else-if="errorLogs.length === 0" class="empty-logs">
+          <p>✅ 暂无错误日志</p>
+        </div>
+        <div v-else class="error-log-content">
+          <!-- 服务分隔符 -->
+          <div class="service-separator">
+            {{ getServiceSeparator() }}
+          </div>
+          <!-- 错误日志条目 -->
+          <div 
+            v-for="(log, index) in errorLogs" 
+            :key="index + '-error'" 
+            class="log-entry"
+            :class="getLogClass(log)"
+          >
+            <span class="log-time">{{ formatLogTime(log.timestamp) }}</span>
+            <span class="log-type" :class="log.type">{{ log.type.toUpperCase() }}</span>
+            <span class="log-message" v-html="formatErrorMessage(log.data)"></span>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- 未选择项目时的提示 -->
     <div v-else class="no-selection-card">
@@ -146,6 +182,7 @@ export default {
     const savedState = this.loadSavedState();
     return {
       logs: [],
+      errorLogs: [], // 错误日志数组
       selectedTunnelId: savedState.selectedTunnelId || '',
       selectedServerId: savedState.selectedServerId || null,
       selectedId: savedState.selectedId || null,
@@ -176,10 +213,10 @@ export default {
   },
   computed: {
     /**
-     * 获取正在运行的隧道列表
+     * 获取活跃隧道列表（包含运行中和错误状态的隧道）
      */
     runningTunnels() {
-      return this.tunnels.filter(tunnel => tunnel.status === 'running');
+      return this.tunnels.filter(tunnel => tunnel.status === 'running' || tunnel.status === 'error');
     },
     runningServers() {
       return this.servers.filter(server => server.status === 'running');
@@ -368,6 +405,7 @@ export default {
     async loadServerLogs() {
       if (!this.selectedId) {
         this.logs = [];
+        this.errorLogs = [];
         return;
       }
 
@@ -381,6 +419,7 @@ export default {
           return;
         }
         this.logs = result || [];
+        this.filterErrorLogs();
         this.lastUpdated = new Date();
         console.log(`服务端 ${this.selectedId} 日志加载成功:`, this.logs);
       } catch (error) {
@@ -406,6 +445,7 @@ export default {
           return;
         }
         this.logs = result || [];
+        this.filterErrorLogs();
         this.lastUpdated = new Date();
       } catch (error) {
         console.error('获取隧道日志失败:', error);
@@ -413,6 +453,105 @@ export default {
       } finally {
         this.loading = false;
       }
+    },
+    
+    /**
+     * 过滤错误日志
+     */
+    filterErrorLogs() {
+      // 过滤出错误类型的日志（stderr或包含error、fail等关键词的日志）
+      this.errorLogs = this.logs.filter(log => {
+        // 检查日志类型是否为stderr
+        if (log.type === 'stderr') {
+          return true;
+        }
+        
+        const logData = String(log.data).toLowerCase();
+        
+        // 检查日志内容是否包含错误相关关键词（不区分大小写）
+        const errorKeywords = [
+          'error', 'fail', 'failed', 'exception', 'crash', 'unexpected', 'invalid',
+          'error:', 'fail:', 'failed:', 'exception:', 'crash:',
+          '错误', '失败', '异常', '崩溃', '无效', '错误:', '失败:',
+          'timeout', 'timeout:', '拒绝连接', '连接失败', 'connection refused',
+          'access denied', 'permission denied', '权限被拒绝', '访问被拒绝',
+          'warning', 'warning:', '警告', '警告:',
+          'panic', 'panic:', 'fatal', 'fatal:',
+          'stack trace', '堆栈跟踪', 'error occurred', '发生错误'
+        ];
+        
+        // 检查是否包含任何错误关键词
+        if (errorKeywords.some(keyword => logData.includes(keyword))) {
+          return true;
+        }
+        
+        // 检查日志内容是否包含错误码格式（如 E123 或 ERROR-404）
+        const errorCodePattern = /(e\d{3,}|error-\d{3,}|err\d{3,})/i;
+        if (errorCodePattern.test(logData)) {
+          return true;
+        }
+        
+        // 检查HTTP错误码（如 404 Not Found, 500 Internal Server Error）
+        const httpErrorPattern = /(\b(4|5)\d{2}\b)/;
+        return httpErrorPattern.test(logData);
+      });
+    },
+    
+    /**
+     * 获取服务分隔符
+     */
+    getServiceSeparator() {
+      if (!this.selectedId) return '';
+      
+      let serviceName = '';
+      if (this.logType === 'tunnel') {
+        const tunnel = this.tunnels.find(t => t.id === this.selectedId);
+        serviceName = tunnel ? tunnel.name : '隧道';
+      } else {
+        const server = this.servers.find(s => s.id === this.selectedId);
+        serviceName = server ? server.name : '服务';
+      }
+      
+      // 创建分隔符，格式为：-------------------------服务名--------------------------
+      const separator = '-------------------------';
+      return separator + serviceName + separator;
+    },
+    
+    /**
+     * 格式化错误日志消息
+     */
+    formatErrorMessage(message) {
+      // 复用现有的日志消息格式化逻辑，但可以额外增强错误显示
+      let formatted = this.formatLogMessage(message);
+      
+      // 突出显示不同类型的错误内容
+      // 1. 突出显示错误关键词
+      const errorKeywords = [
+        'error', 'fail', 'failed', 'exception', 'crash', 'unexpected', 'invalid',
+        '错误', '失败', '异常', '崩溃', '无效',
+        'timeout', 'connection refused', 'permission denied',
+        '拒绝连接', '权限被拒绝', '访问被拒绝',
+        'panic', 'fatal', 'warning'
+      ];
+      
+      errorKeywords.forEach(keyword => {
+        const regex = new RegExp(`\b(${keyword})\b`, 'gi');
+        formatted = formatted.replace(regex, '<span class="error-keyword">$1</span>');
+      });
+      
+      // 2. 突出显示错误码
+      const errorCodePattern = /(E\d{3,}|ERROR-\d{3,}|ERR\d{3,})/gi;
+      formatted = formatted.replace(errorCodePattern, '<span class="error-code">$1</span>');
+      
+      // 3. 突出显示HTTP状态码
+      const httpErrorPattern = /(\b(4|5)\d{2}\b)/g;
+      formatted = formatted.replace(httpErrorPattern, '<span class="http-error">$1</span>');
+      
+      // 4. 突出显示时间戳（如果包含在日志内容中）
+      const timestampPattern = /(\d{4}[-/]\d{2}[-/]\d{2}[ T]\d{2}:\d{2}:\d{2}[.,]\d{3}?)/g;
+      formatted = formatted.replace(timestampPattern, '<span class="log-timestamp-highlight">$1</span>');
+      
+      return formatted;
     },
 
     /**
@@ -940,6 +1079,100 @@ export default {
 .color-light-magenta { color: #ff6bb6; }
 .color-light-cyan { color: #22b8cf; }
 .color-light-white { color: #f8f9fa; }
+
+/* 错误日志相关样式 */
+.error-log-display-card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  margin-bottom: 20px;
+  overflow: hidden;
+  border-left: 4px solid #e74c3c;
+  transition: box-shadow 0.3s ease;
+}
+
+.error-log-display-card:hover {
+  box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+}
+
+.error-log-content {
+  max-height: 400px;
+  overflow-y: auto;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  background-color: #fafafa;
+}
+
+.error-log-content .log-entry {
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.error-log-content .log-entry:last-child {
+  border-bottom: none;
+}
+
+.service-separator {
+  background-color: #f8d7da;
+  color: #721c24;
+  padding: 8px 20px;
+  font-weight: bold;
+  text-align: center;
+  border-bottom: 1px solid #f5c6cb;
+  font-size: 12px;
+  margin-bottom: 0;
+  word-break: break-all;
+}
+
+/* 错误关键词高亮 */
+.error-keyword {
+  background-color: #f8d7da;
+  color: #721c24;
+  font-weight: bold;
+  padding: 2px 4px;
+  border-radius: 3px;
+  animation: highlight 1s ease-in-out;
+}
+
+/* 错误码高亮 */
+.error-code {
+  background-color: #f5c6cb;
+  color: #721c24;
+  font-weight: bold;
+  padding: 1px 3px;
+  border-radius: 2px;
+  text-transform: uppercase;
+}
+
+/* HTTP错误码高亮 */
+.http-error {
+  background-color: #fd7e14;
+  color: white;
+  font-weight: bold;
+  padding: 1px 3px;
+  border-radius: 2px;
+}
+
+/* 时间戳高亮 */
+.log-timestamp-highlight {
+  color: #495057;
+  font-weight: bold;
+  font-style: italic;
+}
+
+/* 高亮动画 */
+@keyframes highlight {
+  0% {
+    background-color: #f8d7da;
+    box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 5px rgba(231, 76, 60, 0);
+  }
+  100% {
+    background-color: #f8d7da;
+  }
+}
 
 .log-link {
   color: #3498db;

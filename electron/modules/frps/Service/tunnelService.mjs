@@ -1,6 +1,6 @@
 import { storeManager } from '../../store/storeManager/storeManager.mjs';
 import path from 'path';
-import { app } from 'electron';
+import { app, ipcMain, BrowserWindow } from 'electron';
 import fs from 'fs';
 
 import UniversalProcessManager from '../../UniversalProcessManager/utils/UniversalProcessManager.mjs';
@@ -95,6 +95,28 @@ class TunnelService {
   }
   
   /**
+   * 获取当前所有窗口
+   * @returns {Array} 窗口数组
+   */
+  getAllWindows() {
+    return BrowserWindow.getAllWindows();
+  }
+
+  /**
+   * 向所有窗口发送IPC消息
+   * @param {string} channel 消息通道
+   * @param {any} data 消息数据
+   */
+  sendToAllWindows(channel, data) {
+    const windows = this.getAllWindows();
+    windows.forEach(window => {
+      if (window && !window.isDestroyed()) {
+        window.webContents.send(channel, data);
+      }
+    });
+  }
+
+  /**
    * 设置进程事件监听器
    */
   setupProcessEventListeners() {
@@ -141,9 +163,7 @@ class TunnelService {
         // 如果进程意外退出，更新状态
         if (processInfo.status === 'exited' && processInfo.exitCode !== 0) {
           this.updateTunnelStatusOnError(tunnelId, `进程意外退出，退出码: ${processInfo.exitCode}`);
-          // 清理隧道日志
-          this.clearTunnelLogs(tunnelId);
-          console.log(`隧道 ${tunnelId} 的日志已清理（异常退出）`);
+          // 不再清理异常退出的日志，保留错误日志供用户查看
         } else if (processInfo.exitCode === 0) {
           // 正常退出，更新状态为stopped
           this.updateTunnelStatus(tunnelId, 'stopped');
@@ -177,10 +197,15 @@ class TunnelService {
       // 从映射中移除
       tunnelProcessMap.delete(tunnelId);
       
-      // 清理隧道日志
-      this.clearTunnelLogs(tunnelId);
+      // 不再清理错误日志，保留错误日志供用户查看
       console.log(`隧道 ${tunnelId} 状态更新为错误:`, errorMessage);
-      console.log(`隧道 ${tunnelId} 的日志已清理（错误状态）`);
+      
+      // 通知前端状态已更新
+      this.sendToAllWindows('tunnel:status-updated', {
+        tunnelId: tunnelId,
+        status: 'error',
+        errorMessage: errorMessage
+      });
     }
   }
 
@@ -496,10 +521,20 @@ class TunnelService {
     
     if (index === -1) return null;
     
+    const oldStatus = tunnels[index].status;
     tunnels[index].status = status;
     tunnels[index].updatedAt = new Date().toISOString();
     
     storeManager.set(this.tunnelsKey, tunnels);
+    
+    // 状态发生变化时通知前端
+    if (oldStatus !== status) {
+      this.sendToAllWindows('tunnel:status-updated', {
+        tunnelId: id,
+        status: status
+      });
+    }
+    
     return tunnels[index];
   }
 

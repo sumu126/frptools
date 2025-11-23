@@ -1,5 +1,13 @@
-import { ipcMain } from 'electron';
+import { ipcMain, BrowserWindow } from 'electron';
 import { tunnelService } from '../Service/tunnelService.mjs';
+
+/**
+ * 获取所有活动窗口
+ * @returns {Array} 窗口数组
+ */
+function getAllWindows() {
+  return BrowserWindow.getAllWindows();
+}
 
 /**
  * 初始化隧道控制器
@@ -148,6 +156,20 @@ function tunnelController() {
   });
 
   console.log('隧道控制器初始化完成');
+  
+  // 添加隧道状态更新事件的监听处理
+  // 允许渲染进程监听隧道状态更新
+  ipcMain.on('tunnel:subscribe-status-updates', (event) => {
+    const window = BrowserWindow.fromWebContents(event.sender);
+    if (window) {
+      console.log('渲染进程已订阅隧道状态更新');
+    }
+  });
+  
+  // 移除隧道状态更新事件监听
+  ipcMain.on('tunnel:unsubscribe-status-updates', (event) => {
+    console.log('渲染进程已取消订阅隧道状态更新');
+  });
 }
 
 export { tunnelController };

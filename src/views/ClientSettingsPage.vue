@@ -194,6 +194,18 @@ export default {
   },
   async mounted() {
     await this.loadTunnels()
+    
+    // 监听隧道状态更新事件
+    window.electronAPI?.onTunnelStatusUpdated((event, data) => {
+      console.log('收到隧道状态更新:', data);
+      // 刷新隧道列表以更新状态显示
+      this.loadTunnels();
+    });
+  },
+  
+  beforeUnmount() {
+    // 移除事件监听器，避免内存泄漏
+    window.electronAPI?.removeTunnelStatusUpdatedListener?.();
   },
   methods: {
     // 显示通知的通用方法
