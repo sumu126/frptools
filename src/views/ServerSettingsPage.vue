@@ -24,7 +24,7 @@
             <button v-if="config.status === 'stopped'" class="btn btn-success" @click="startConfig(config.id)">
               <i class="fas fa-play"></i> 启动
             </button>
-            <button v-if="config.status === 'running'" class="btn btn-warning" @click="stopConfig(config.id)">
+            <button v-if="config.status === 'running' || config.status === 'error'" class="btn btn-warning" @click="stopConfig(config.id)">
               <i class="fas fa-stop"></i> 停止
             </button>
             <button class="btn btn-info" @click="viewTomlContent(config.id)">
