@@ -497,6 +497,23 @@ class FrpsConfigService {
       toml += `auth.token = "${configData.authToken}"\n`;
     }
     
+    // 添加日志配置（如果启用）
+    if (configData.enableLog) {
+      toml += '\n# 日志配置\n';
+      if (configData.logPath) {
+        toml += `log.to = "${configData.logPath}"\n`;
+      }
+      if (configData.logLevel) {
+        toml += `log.level = "${configData.logLevel}"\n`;
+      }
+      if (configData.logMaxDays) {
+        toml += `log.maxDays = ${configData.logMaxDays}\n`;
+      }
+      if (configData.disableLogColor) {
+        toml += `log.disablePrintColor = ${configData.disableLogColor}\n`;
+      }
+    }
+    
     return toml;
   }
 

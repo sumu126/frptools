@@ -6,7 +6,7 @@
         <div class="app-header">
           <div class="app-info">
             <p><strong>关于:</strong> frptools</p>
-            <p><strong>版本:</strong> 0.0.2</p>
+            <p><strong>版本:</strong> {{ appVersion }}</p>
             <p><strong>描述:</strong> 一个frp的GUI工具</p>
             <p><strong>许可证:</strong> MIT</p>
           </div>
@@ -87,12 +87,20 @@
 </template>
 
 <script>
+// 直接从package.json导入版本号
+import packageInfo from '../../package.json';
+
 export default {
   name: 'AboutPage',
   props: {
     appName: {
       type: String,
       default: 'frptools'
+    }
+  },
+  data() {
+    return {
+      appVersion: packageInfo.version
     }
   },
   mounted() {

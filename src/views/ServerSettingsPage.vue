@@ -25,16 +25,16 @@
               <i class="fas fa-play"></i> 启动
             </button>
             <button v-if="config.status === 'running' || config.status === 'error'" class="btn btn-warning" @click="stopConfig(config.id)">
-              <i class="fas fa-stop"></i> 停止
+              <i class="fas fa-stop"></i>停止
             </button>
             <button class="btn btn-info" @click="viewTomlContent(config.id)">
-              <i class="fas fa-code"></i> 查看配置
+              <i class="fas fa-code"></i>查看配置
             </button>
             <button class="btn btn-secondary" @click="editConfig(config.id)">
-              <i class="fas fa-edit"></i> 编辑
+              <i class="fas fa-edit"></i>编辑
             </button>
             <button class="btn btn-danger" @click="deleteConfig(config.id)">
-              <i class="fas fa-trash"></i> 删除
+              <i class="fas fa-trash"></i>删除
             </button>
           </div>
         </div>
@@ -76,6 +76,49 @@
             <div v-if="configForm.authMethod === 'token'" class="form-group">
               <label>认证令牌:</label>
               <input v-model="configForm.authToken" type="text" placeholder="输入认证令牌">
+            </div>
+            
+            <div class="form-group">
+              <label>日志配置:</label>
+              <div class="log-switch-container">
+                <span>启用FRPS日志</span>
+                <label class="switch">
+                  <input type="checkbox" v-model="configForm.enableLog">
+                  <span class="slider round"></span>
+                </label>
+              </div>
+              
+              <div v-if="configForm.enableLog" class="log-config-details">
+                <div class="form-group">
+                  <label>日志保存目录:</label>
+                  <input v-model="configForm.logPath" type="text" placeholder="./log">
+                  <small class="form-hint">日志文件名将自动设置为服务名.log</small>
+                </div>
+                
+                <div class="form-group">
+                  <label>日志级别:</label>
+                  <select v-model="configForm.logLevel">
+                    <option value="trace">Trace</option>
+                    <option value="debug">Debug</option>
+                    <option value="info">Info</option>
+                    <option value="warn">Warn</option>
+                    <option value="error">Error</option>
+                  </select>
+                </div>
+                
+                <div class="form-group">
+                  <label>日志保留天数:</label>
+                  <input v-model.number="configForm.logMaxDays" type="number" min="1" max="365" placeholder="3">
+                </div>
+                
+                <div class="form-group">
+                  <label>禁用日志颜色:</label>
+                  <label class="switch">
+                    <input type="checkbox" v-model="configForm.disableLogColor">
+                    <span class="slider round"></span>
+                  </label>
+                </div>
+              </div>
             </div>
           </div>
           
@@ -123,7 +166,12 @@ export default {
         name: '',
         bindPort: 7000,
         authMethod: 'none',
-        authToken: ''
+        authToken: '',
+        enableLog: false,
+        logPath: './log',
+        logLevel: 'info',
+        logMaxDays: 3,
+        disableLogColor: false
       }
     }
   },
@@ -169,7 +217,12 @@ export default {
         name: '',
         bindPort: 7000,
         authMethod: 'none',
-        authToken: ''
+        authToken: '',
+        enableLog: false,
+        logPath: './log',
+        logLevel: 'info',
+        logMaxDays: 3,
+        disableLogColor: false
       }
       this.showEditModal = true
     },
@@ -178,11 +231,19 @@ export default {
       const config = this.configs.find(c => c.id === configId)
       if (config) {
         this.editingConfig = config
+        // 从保存的logPath中提取目录部分，避免重复拼接文件名
+        const directoryPath = this.extractDirectory(config.logPath);
+        
         this.configForm = { 
           name: config.name,
           bindPort: config.bindPort,
           authMethod: config.authMethod,
-          authToken: config.authToken || ''
+          authToken: config.authToken || '',
+          enableLog: config.enableLog || false,
+          logPath: directoryPath || './log',
+          logLevel: config.logLevel || 'info',
+          logMaxDays: config.logMaxDays || 3,
+          disableLogColor: config.disableLogColor || false
         }
         this.showEditModal = true
       }
@@ -193,14 +254,47 @@ export default {
       this.editingConfig = null
     },
 
+    // 辅助函数：标准化路径分隔符
+    normalizePath(path) {
+      // 将所有的反斜杠转换为正斜杠
+      return path ? path.split('\\').join('/') : './log';
+    },
+      
+    // 辅助函数：从完整路径中提取目录部分
+    extractDirectory(fullPath) {
+      if (!fullPath) return './log';
+      // 先标准化路径分隔符
+      const normalizedPath = this.normalizePath(fullPath);
+      // 如果路径以.log结尾，认为这是一个完整的日志文件路径，提取其目录部分
+      if (normalizedPath.endsWith('.log')) {
+        const lastSlashIndex = normalizedPath.lastIndexOf('/');
+        return lastSlashIndex > -1 ? normalizedPath.substring(0, lastSlashIndex) : './log';
+      }
+      return normalizedPath;
+    },
     async saveConfig() {
       try {
-        // 清理配置数据，移除不必要的字段
+        // 清理配置数据，包含日志相关配置
+        // 将日志路径与服务名拼接，生成完整的日志文件路径
+        let directoryPath = this.normalizePath(this.configForm.logPath);
+        let logFilePath = directoryPath;
+        
+        if (this.configForm.enableLog && this.configForm.name) {
+          // 确保路径末尾没有反斜杠或斜杠，然后拼接服务名.log
+          directoryPath = directoryPath.replace(/[\\/]$/, '');
+          logFilePath = `${directoryPath}/${this.configForm.name}.log`;
+        }
+        
         const cleanConfig = {
           name: this.configForm.name,
           bindPort: this.configForm.bindPort,
           authMethod: this.configForm.authMethod,
-          authToken: this.configForm.authToken
+          authToken: this.configForm.authToken,
+          enableLog: this.configForm.enableLog,
+          logPath: logFilePath,
+          logLevel: this.configForm.logLevel,
+          logMaxDays: this.configForm.logMaxDays,
+          disableLogColor: this.configForm.disableLogColor
         };
 
         const validation = await window.electronAPI.frpsConfig.validate(cleanConfig)
@@ -308,6 +402,80 @@ export default {
   padding: 30px;
   max-width: 1200px;
   margin: 0 auto;
+}
+
+/* 滑动开关样式 */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 50px;
+  height: 24px;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  transition: .4s;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 16px;
+  width: 16px;
+  left: 4px;
+  bottom: 4px;
+  background-color: white;
+  transition: .4s;
+}
+
+input:checked + .slider {
+  background-color: #2196F3;
+}
+
+input:checked + .slider:before {
+  transform: translateX(26px);
+}
+
+.slider.round {
+  border-radius: 34px;
+}
+
+.slider.round:before {
+  border-radius: 50%;
+}
+
+.log-switch-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.log-config-details {
+  margin-top: 15px;
+  padding: 15px;
+  background-color: #f8f9fa;
+  border-radius: 6px;
+  border: 1px solid #e9ecef;
+}
+
+.form-hint {
+  display: block;
+  margin-top: 5px;
+  font-size: 0.85rem;
+  color: #6c757d;
 }
 
 .page-header {
