@@ -28,6 +28,7 @@ app.whenReady().then(() =>{
 
   // 初始化自动更新器
   initializeAutoUpdater(mainPage, autoUpdater, log);
+  
 
 });
 
@@ -35,6 +36,42 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();
   }
+});
+
+// 程序退出前关闭所有正在运行的frp隧道和frps服务端
+app.on('before-quit', async (event) => {
+  console.log('程序即将退出，正在关闭所有运行的frp隧道和frps服务端...');
+  
+  try {
+    // 导入隧道服务
+    const { tunnelService } = await import('./modules/frps/Service/tunnelService.mjs');
+    
+    // 停止所有运行中的隧道
+    const tunnelStopResults = await tunnelService.stopAllTunnels();
+    
+    console.log(`已停止 ${tunnelStopResults.length} 个运行中的隧道`);
+    
+  } catch (error) {
+    console.error('关闭隧道时发生错误:', error);
+    // 即使关闭隧道失败，也继续退出程序
+  }
+  
+  try {
+    // 导入frps配置服务（使用默认导入）
+    const frpsConfigService = (await import('./modules/frps/Service/frpsConfigService.mjs')).default;
+    
+    // 停止所有运行中的frps服务端
+    const frpsStopResults = await frpsConfigService.stopAllConfigs();
+    
+    console.log(`已停止 ${frpsStopResults.length} 个运行中的frps服务端`);
+    
+  } catch (error) {
+    console.error('关闭frps服务端时发生错误:', error);
+    // 即使关闭frps服务端失败，也继续退出程序
+  }
+  
+  // 等待一小段时间确保所有进程完全停止
+  await new Promise(resolve => setTimeout(resolve, 1000));
 });
 
 app.on('activate', () => {

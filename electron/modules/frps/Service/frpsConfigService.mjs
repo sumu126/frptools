@@ -476,7 +476,7 @@ class FrpsConfigService {
       // 清理日志，避免内存占用
       this.clearConfigLogs(id);
       console.log(`已清理FRPS配置 ${id} 的日志数据`);
-      
+      console.log(`已停止FRPS配置 ${id}，PID: ${pid}`);
       return { success: true, config: configs[index] };
     } catch (error) {
       console.error(`停止FRPS配置 ${id} 失败:`, error);
