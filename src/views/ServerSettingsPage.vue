@@ -1,7 +1,7 @@
 <template>
   <div class="server-settings-page">
     <div class="page-header">
-      <h2>FRPS服务器配置管理</h2>
+      <h2>服务管理</h2>
       <button class="btn btn-primary" @click="addNewConfig">
         <i class="fas fa-plus"></i> 添加配置
       </button>

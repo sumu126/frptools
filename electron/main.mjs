@@ -1,5 +1,8 @@
 import { app } from 'electron';
 import log from 'electron-log';
+import electronUpdater from 'electron-updater';
+const { autoUpdater } = electronUpdater;
+import { initializeAutoUpdater } from './modules/utils/autoUpdater/autoUpdater.mjs';
 import { createMainWindow } from './modules/windowsManager/windowsService/windowsService.mjs';
 import { initializeControllers } from './modules/utils/initializeControllersUtils/initializeControllersUtils.mjs';
 import { setupTray } from './modules/tray/trayManager/trayManager.mjs';
@@ -7,6 +10,7 @@ import { quitApp } from './modules/utils/appUtils/appUtils.mjs';
 
 process.env.NODE_ENV = process.argv.includes('--dev') ? 'development' : 'production';
 log.transports.file.level = 'info';
+autoUpdater.logger = log;
 app.commandLine.appendSwitch('lang', 'zh-CN');
 
 const gotTheLock = app.requestSingleInstanceLock();
@@ -21,6 +25,10 @@ app.whenReady().then(() =>{
   mainPage = createMainWindow();
   initializeControllers(mainPage);
   tray = setupTray(mainPage, quitApp);
+
+  // 初始化自动更新器
+  initializeAutoUpdater(mainPage, autoUpdater, log);
+
 });
 
 app.on('window-all-closed', () => {

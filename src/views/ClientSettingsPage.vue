@@ -2,7 +2,6 @@
   <div class="content-section">
     <div class="page-header">
       <h1>隧道管理</h1>
-      <p>管理您的隧道连接和配置</p>
       <button class="btn btn-primary" @click="addNewTunnel">
         <span class="btn-icon">+</span>
         添加新隧道
