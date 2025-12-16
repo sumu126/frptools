@@ -120,6 +120,44 @@
                 </div>
               </div>
             </div>
+            
+            <!-- 仪表盘配置 -->
+            <div class="form-group">
+              <label>仪表盘配置:</label>
+              <div class="log-switch-container">
+                <span>启用FRPS仪表盘</span>
+                <label class="switch">
+                  <input type="checkbox" v-model="configForm.enableDashboard">
+                  <span class="slider round"></span>
+                </label>
+              </div>
+              
+              <div v-if="configForm.enableDashboard" class="log-config-details">
+                <div class="form-group">
+                  <label>仪表盘地址:</label>
+                  <input v-model="configForm.dashboardAddr" type="text" placeholder="127.0.0.1">
+                  <small class="form-hint">监听地址，默认为127.0.0.1</small>
+                </div>
+                
+                <div class="form-group">
+                  <label>仪表盘端口:</label>
+                  <input v-model.number="configForm.dashboardPort" type="number" min="1" max="65535" placeholder="7500">
+                  <small class="form-hint">默认为7500</small>
+                </div>
+                
+                <div class="form-group">
+                  <label>仪表盘用户名:</label>
+                  <input v-model="configForm.dashboardUser" type="text" placeholder="admin">
+                  <small class="form-hint">默认用户名为admin</small>
+                </div>
+                
+                <div class="form-group">
+                  <label>仪表盘密码:</label>
+                  <input v-model="configForm.dashboardPassword" type="password" placeholder="admin">
+                  <small class="form-hint">默认密码为admin</small>
+                </div>
+              </div>
+            </div>
           </div>
           
           <div class="modal-footer">
@@ -171,7 +209,12 @@ export default {
         logPath: './log',
         logLevel: 'info',
         logMaxDays: 3,
-        disableLogColor: false
+        disableLogColor: false,
+        enableDashboard: false,
+        dashboardAddr: '127.0.0.1',
+        dashboardPort: 7500,
+        dashboardUser: 'admin',
+        dashboardPassword: 'admin'
       }
     }
   },
@@ -222,7 +265,12 @@ export default {
         logPath: './log',
         logLevel: 'info',
         logMaxDays: 3,
-        disableLogColor: false
+        disableLogColor: false,
+        enableDashboard: false,
+        dashboardAddr: '127.0.0.1',
+        dashboardPort: 7500,
+        dashboardUser: 'admin',
+        dashboardPassword: 'admin'
       }
       this.showEditModal = true
     },
@@ -243,7 +291,12 @@ export default {
           logPath: directoryPath || './log',
           logLevel: config.logLevel || 'info',
           logMaxDays: config.logMaxDays || 3,
-          disableLogColor: config.disableLogColor || false
+          disableLogColor: config.disableLogColor || false,
+          enableDashboard: config.enableDashboard || false,
+          dashboardAddr: config.dashboardAddr || '127.0.0.1',
+          dashboardPort: config.dashboardPort || 7500,
+          dashboardUser: config.dashboardUser || 'admin',
+          dashboardPassword: config.dashboardPassword || 'admin'
         }
         this.showEditModal = true
       }
@@ -294,7 +347,12 @@ export default {
           logPath: logFilePath,
           logLevel: this.configForm.logLevel,
           logMaxDays: this.configForm.logMaxDays,
-          disableLogColor: this.configForm.disableLogColor
+          disableLogColor: this.configForm.disableLogColor,
+          enableDashboard: this.configForm.enableDashboard,
+          dashboardAddr: this.configForm.dashboardAddr,
+          dashboardPort: this.configForm.dashboardPort,
+          dashboardUser: this.configForm.dashboardUser,
+          dashboardPassword: this.configForm.dashboardPassword
         };
 
         const validation = await window.electronAPI.frpsConfig.validate(cleanConfig)

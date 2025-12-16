@@ -514,6 +514,23 @@ class FrpsConfigService {
       }
     }
     
+    // 添加仪表盘配置（如果启用）
+    if (configData.enableDashboard) {
+      toml += '\n# 仪表盘配置\n';
+      if (configData.dashboardAddr) {
+        toml += `webServer.addr = "${configData.dashboardAddr}"\n`;
+      }
+      if (configData.dashboardPort) {
+        toml += `webServer.port = ${configData.dashboardPort}\n`;
+      }
+      if (configData.dashboardUser) {
+        toml += `webServer.user = "${configData.dashboardUser}"\n`;
+      }
+      if (configData.dashboardPassword) {
+        toml += `webServer.password = "${configData.dashboardPassword}"\n`;
+      }
+    }
+    
     return toml;
   }
 
