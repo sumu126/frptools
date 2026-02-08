@@ -8,6 +8,23 @@
       </button>
     </div>
     
+    <!-- 启动进度提示 -->
+    <div v-if="startingTunnelId" class="start-progress-overlay">
+      <div class="start-progress-content">
+        <div class="progress-header">
+          <h3>正在启动隧道</h3>
+          <span class="progress-close" @click="cancelStartProgress">×</span>
+        </div>
+        <div class="progress-body">
+          <div class="progress-bar-container">
+            <div class="progress-bar" :style="{ width: startProgress + '%' }"></div>
+          </div>
+          <div class="progress-text">{{ startProgressMessage }}</div>
+          <div v-if="startError" class="progress-error">{{ startError }}</div>
+        </div>
+      </div>
+    </div>
+    
     <!-- 隧道列表 -->
     <div class="tunnels-grid">
       <div 
@@ -172,23 +189,12 @@ export default {
         protocol: 'tcp',
         authType: 'none',
         authKey: ''
-      }
-    }
-  },
-  data() {
-    return {
-      tunnels: [],
-      showEditModal: false,
-      editingTunnel: null,
-      tunnelForm: {
-        name: '',
-        localAddress: '',
-        remoteAddress: '',
-        remotePort: '',
-        protocol: 'tcp',
-        authType: 'none',
-        authKey: ''
-      }
+      },
+      // 启动进度相关数据
+      startingTunnelId: null,
+      startProgress: 0,
+      startProgressMessage: '',
+      startError: null
     }
   },
   async mounted() {
@@ -200,13 +206,55 @@ export default {
       // 刷新隧道列表以更新状态显示
       this.loadTunnels();
     });
+    
+    // 监听隧道启动进度事件
+    window.electronAPI?.onTunnelStartProgress((event, data) => {
+      console.log('收到隧道启动进度:', data);
+      this.handleTunnelStartProgress(data);
+    });
   },
   
   beforeUnmount() {
     // 移除事件监听器，避免内存泄漏
     window.electronAPI?.removeTunnelStatusUpdatedListener?.();
+    window.electronAPI?.removeTunnelStartProgressListener?.();
   },
   methods: {
+    // 处理隧道启动进度
+    handleTunnelStartProgress(data) {
+      if (data.tunnelId === this.startingTunnelId) {
+        this.startProgress = data.progress;
+        this.startProgressMessage = data.message;
+        
+        if (data.error) {
+          this.startError = data.message;
+          // 错误时自动关闭进度显示
+          setTimeout(() => {
+            this.resetStartProgress();
+          }, 3000);
+        } else if (data.progress === 100) {
+          // 完成时自动关闭进度显示
+          setTimeout(() => {
+            this.resetStartProgress();
+            this.loadTunnels(); // 刷新隧道列表
+          }, 1000);
+        }
+      }
+    },
+    
+    // 重置启动进度状态
+    resetStartProgress() {
+      this.startingTunnelId = null;
+      this.startProgress = 0;
+      this.startProgressMessage = '';
+      this.startError = null;
+    },
+    
+    // 取消启动进度显示
+    cancelStartProgress() {
+      this.resetStartProgress();
+    },
+    
     // 显示通知的通用方法
     showNotification(title, message, type = 'info') {
       // 使用Element Plus的通知组件，添加偏移量避免与头部重合
@@ -306,18 +354,27 @@ export default {
     
     async startTunnel(tunnelId) {
       try {
+        // 显示启动进度
+        this.startingTunnelId = tunnelId;
+        this.startProgress = 0;
+        this.startProgressMessage = '正在启动隧道...';
+        this.startError = null;
+        
         const result = await window.electronAPI.tunnel.start(tunnelId)
         if (result.error) {
           console.error('启动隧道失败:', result.error)
           this.showNotification('启动失败', result.error, 'error')
+          this.startError = result.error;
           return
         }
-        await this.loadTunnels()
-        const tunnel = this.tunnels.find(t => t.id === tunnelId)
-        this.showNotification('隧道启动', `隧道"${tunnel.name}"已启动`, 'success')
+        
+        // 进度会在handleTunnelStartProgress中自动更新
+        // 完成时自动关闭进度显示并刷新列表
+        
       } catch (error) {
         console.error('启动隧道失败:', error)
         this.showNotification('启动失败', error.message, 'error')
+        this.startError = error.message;
       }
     },
     
@@ -858,5 +915,119 @@ export default {
   0% { opacity: 1; }
   50% { opacity: 0.5; }
   100% { opacity: 1; }
+}
+
+/* 启动进度显示样式 */
+.start-progress-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.3s ease;
+}
+
+.start-progress-content {
+  background: white;
+  border-radius: 12px;
+  padding: 0;
+  width: 400px;
+  max-width: 90vw;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  animation: slideUp 0.3s ease;
+}
+
+.progress-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid #f0f0f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.progress-header h3 {
+  margin: 0;
+  color: #2c3e50;
+  font-size: 1.25em;
+  font-weight: 600;
+}
+
+.progress-close {
+  background: none;
+  border: none;
+  font-size: 1.75em;
+  cursor: pointer;
+  color: #95a5a6;
+  padding: 4px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  line-height: 1;
+  height: 32px;
+  width: 32px;
+}
+
+.progress-close:hover {
+  background: #f8f9fa;
+  color: #e74c3c;
+}
+
+.progress-body {
+  padding: 24px;
+}
+
+.progress-bar-container {
+  background: #f0f0f0;
+  border-radius: 10px;
+  height: 8px;
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+
+.progress-bar {
+  background: linear-gradient(90deg, #3498db, #2ecc71);
+  height: 100%;
+  border-radius: 10px;
+  transition: width 0.3s ease;
+}
+
+.progress-text {
+  text-align: center;
+  color: #7f8c8d;
+  font-size: 0.95em;
+  margin-bottom: 8px;
+}
+
+.progress-error {
+  text-align: center;
+  color: #e74c3c;
+  font-size: 0.9em;
+  background: #ffeaea;
+  padding: 8px 12px;
+  border-radius: 6px;
+  margin-top: 8px;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 </style>

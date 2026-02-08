@@ -26,6 +26,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   removeTunnelStatusUpdatedListener: () => ipcRenderer.removeAllListeners('tunnel:status-updated'),
   
+  // 隧道启动进度事件
+  onTunnelStartProgress: (callback) => {
+    const listener = (event, data) => callback(event, data);
+    ipcRenderer.on('tunnel:start-progress', listener);
+    return listener;
+  },
+  removeTunnelStartProgressListener: () => ipcRenderer.removeAllListeners('tunnel:start-progress'),
+  
   // 隧道管理
     tunnel: {
       getAll: () => ipcRenderer.invoke('tunnel:getAll'),

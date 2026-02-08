@@ -69,46 +69,56 @@ app.whenReady().then(async () =>{
   // 初始化自动更新器
   initializeAutoUpdater(mainPage, autoUpdater, log);
   
-  // 验证和修复隧道和服务状态
-  try {
-    console.log('正在验证隧道和服务状态...');
-    
-    // 验证隧道状态
-    const { tunnelService } = await import('./modules/frps/Service/tunnelService.mjs');
-    const tunnels = tunnelService.getAllTunnels();
-    let tunnelsFixed = 0;
-    
-    for (const tunnel of tunnels) {
-      if (tunnel.status === 'running') {
-        const isActuallyRunning = await tunnelService.isTunnelRunning(tunnel.id);
-        if (!isActuallyRunning) {
-          console.log(`隧道 ${tunnel.id} 标记为运行中，但进程不存在，更新状态为已停止`);
-          tunnelService.updateTunnelStatus(tunnel.id, 'stopped');
-          tunnelsFixed++;
+  // 异步验证和修复隧道和服务状态（在后台执行，不阻塞启动）
+  setTimeout(async () => {
+    try {
+      console.log('正在后台验证隧道和服务状态...');
+      
+      // 验证隧道状态
+      const { tunnelService } = await import('./modules/frps/Service/tunnelService.mjs');
+      const tunnels = tunnelService.getAllTunnels();
+      let tunnelsFixed = 0;
+      
+      for (const tunnel of tunnels) {
+        if (tunnel.status === 'running') {
+          const isActuallyRunning = await tunnelService.isTunnelRunning(tunnel.id);
+          if (!isActuallyRunning) {
+            console.log(`隧道 ${tunnel.id} 标记为运行中，但进程不存在，更新状态为已停止`);
+            tunnelService.updateTunnelStatus(tunnel.id, 'stopped');
+            tunnelsFixed++;
+          }
         }
       }
-    }
-    
-    // 验证FRPS服务状态
-    const frpsConfigService = (await import('./modules/frps/Service/frpsConfigService.mjs')).default;
-    const configs = frpsConfigService.getAllConfigs();
-    let configsFixed = 0;
-    
-    for (const config of configs) {
-      if (config.status === 'running') {
-        const isActuallyRunning = await frpsConfigService.isConfigRunning(config.id);
-        if (!isActuallyRunning) {
-          console.log(`FRPS配置 ${config.id} 标记为运行中，但进程不存在，更新状态为已停止`);
-          frpsConfigService.updateConfigStatus(config.id, 'stopped');
-          configsFixed++;
+      
+      // 验证FRPS服务状态
+      const frpsConfigService = (await import('./modules/frps/Service/frpsConfigService.mjs')).default;
+      const configs = frpsConfigService.getAllConfigs();
+      let configsFixed = 0;
+      
+      for (const config of configs) {
+        if (config.status === 'running') {
+          const isActuallyRunning = await frpsConfigService.isConfigRunning(config.id);
+          if (!isActuallyRunning) {
+            console.log(`FRPS配置 ${config.id} 标记为运行中，但进程不存在，更新状态为已停止`);
+            frpsConfigService.updateConfigStatus(config.id, 'stopped');
+            configsFixed++;
+          }
         }
       }
+      
+      console.log(`状态验证完成，修复了 ${tunnelsFixed} 个隧道和 ${configsFixed} 个FRPS配置的状态`);
+      
+      // 发送状态验证完成的通知
+      if (mainPage && !mainPage.isDestroyed()) {
+        mainPage.webContents.send('app:status-validation-complete', {
+          tunnelsFixed,
+          configsFixed
+        });
+      }
+    } catch (error) {
+      console.error('验证隧道和服务状态时发生错误:', error);
     }
-    
-    console.log(`状态验证完成，修复了 ${tunnelsFixed} 个隧道和 ${configsFixed} 个FRPS配置的状态`);
-  } catch (error) {
-    console.error('验证隧道和服务状态时发生错误:', error);
-  }
+  }, 0); // 使用setTimeout 0确保在下一个事件循环中执行
 });
 
 app.on('window-all-closed', () => {

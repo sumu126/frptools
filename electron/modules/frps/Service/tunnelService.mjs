@@ -50,9 +50,9 @@ function getFrpcPath() {
  * 生成frpc配置文件内容并保存到文件
  * @param {Object} tunnel 隧道对象
  * @param {number} tunnelId 隧道ID
- * @returns {string} frpc配置文件路径
+ * @returns {Promise<string>} frpc配置文件路径
  */
-function generateFrpcConfig(tunnel, tunnelId) {
+async function generateFrpcConfig(tunnel, tunnelId) {
   const config = tunnel.tunnelJson;
   const configContent = `
 serverAddr = "${config.yclocation}"
@@ -74,13 +74,51 @@ remotePort = ${config.yckfprot}
   // 生成配置文件路径
   const configPath = path.join(frpcDir, `tunnel_${tunnelId}.toml`);
   
-  // 如果配置文件已存在，先删除
-  if (fs.existsSync(configPath)) {
-    fs.unlinkSync(configPath);
+  try {
+    // 异步检查文件是否存在并删除
+    if (await fs.promises.access(configPath).then(() => true).catch(() => false)) {
+      await fs.promises.unlink(configPath);
+    }
+    
+    // 异步写入配置文件
+    await fs.promises.writeFile(configPath, configContent, 'utf8');
+    
+    return configPath;
+  } catch (error) {
+    console.error(`生成配置文件失败 (隧道 ${tunnelId}):`, error);
+    throw error;
+  }
+}
+
+/**
+ * 配置文件缓存，避免重复生成相同配置
+ */
+const configCache = new Map();
+
+/**
+ * 生成配置文件的缓存版本
+ * @param {Object} tunnel 隧道对象
+ * @param {number} tunnelId 隧道ID
+ * @returns {Promise<string>} frpc配置文件路径
+ */
+async function generateFrpcConfigCached(tunnel, tunnelId) {
+  const cacheKey = `${tunnelId}_${JSON.stringify(tunnel.tunnelJson)}`;
+  
+  // 检查缓存
+  if (configCache.has(cacheKey)) {
+    const cachedPath = configCache.get(cacheKey);
+    // 检查缓存文件是否仍然存在
+    if (await fs.promises.access(cachedPath).then(() => true).catch(() => false)) {
+      return cachedPath;
+    } else {
+      // 文件不存在，清除缓存
+      configCache.delete(cacheKey);
+    }
   }
   
-  // 将配置写入文件
-  fs.writeFileSync(configPath, configContent, 'utf8');
+  // 生成新配置并缓存
+  const configPath = await generateFrpcConfig(tunnel, tunnelId);
+  configCache.set(cacheKey, configPath);
   
   return configPath;
 }
@@ -405,8 +443,21 @@ class TunnelService {
         throw new Error(`隧道 ${id} 已在运行中`);
       }
 
-      // 生成配置文件并获取路径
-      const configPath = generateFrpcConfig(tunnel, id);
+      // 发送启动进度通知
+      this.sendToAllWindows('tunnel:start-progress', {
+        tunnelId: id,
+        progress: 10,
+        message: '正在准备配置文件...'
+      });
+
+      // 生成配置文件并获取路径（使用缓存版本）
+      const configPath = await generateFrpcConfigCached(tunnel, id);
+      
+      this.sendToAllWindows('tunnel:start-progress', {
+        tunnelId: id,
+        progress: 30,
+        message: '配置文件生成完成，正在启动进程...'
+      });
       
       // 获取frpc可执行文件路径
       const frpcPath = getFrpcPath();
@@ -416,6 +467,12 @@ class TunnelService {
       // 启动frpc进程，使用-c参数传入配置文件路径
       const result = await manager.startApplication(frpcPath, ['-c', configPath], {
         windowsHide: true
+      });
+
+      this.sendToAllWindows('tunnel:start-progress', {
+        tunnelId: id,
+        progress: 70,
+        message: '进程启动成功，正在建立连接...'
       });
 
       // 在这里删除掉临时的frp启动配置文件会有问题，
@@ -443,6 +500,12 @@ class TunnelService {
       
       storeManager.set(this.tunnelsKey, tunnels);
       
+      this.sendToAllWindows('tunnel:start-progress', {
+        tunnelId: id,
+        progress: 100,
+        message: '隧道启动完成'
+      });
+      
       return { 
         success: true, 
         tunnel: tunnels[index],
@@ -451,6 +514,15 @@ class TunnelService {
       };
     } catch (error) {
       console.error(`启动隧道 ${id} 失败:`, error);
+      
+      // 发送错误通知
+      this.sendToAllWindows('tunnel:start-progress', {
+        tunnelId: id,
+        progress: -1,
+        message: `启动失败: ${error.message}`,
+        error: true
+      });
+      
       throw error;
     }
   }

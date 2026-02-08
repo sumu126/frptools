@@ -34,49 +34,64 @@ class UniversalProcessManager extends EventEmitter {
         // 创建子进程
         const childProcess = spawn(command, finalArgs, spawnOptions);
 
-        // 等待进程PID分配
-        const waitForPid = () => {
-          if (childProcess.pid) {
-            const pid = childProcess.pid;
-            
-            // 进程信息对象
-            const processInfo = {
-              pid: pid,
-              process: childProcess,
-              command: command,
-              args: finalArgs,
-              originalArgs: args,
-              options: spawnOptions,
-              status: 'running',
-              startTime: new Date(),
-              logs: [],
-              exitCode: null,
-              error: null
-            };
+        // 使用Promise和事件监听器来等待PID分配
+        const pidPromise = new Promise((resolvePid, rejectPid) => {
+          const timeoutId = setTimeout(() => {
+            rejectPid(new Error('进程启动超时，无法获取PID'));
+          }, 5000); // 5秒超时
 
-            // 存储进程信息（使用PID作为key）
-            this.processes.set(pid, processInfo);
+          const checkPid = () => {
+            if (childProcess.pid) {
+              clearTimeout(timeoutId);
+              resolvePid(childProcess.pid);
+            } else {
+              // 使用process.nextTick而不是setTimeout，更高效
+              process.nextTick(checkPid);
+            }
+          };
+          
+          // 立即开始检查
+          checkPid();
+        });
 
-            // 设置事件监听
-            this.setupProcessEventListeners(pid, childProcess);
+        // 等待PID分配
+        pidPromise.then((pid) => {
+          // 进程信息对象
+          const processInfo = {
+            pid: pid,
+            process: childProcess,
+            command: command,
+            args: finalArgs,
+            originalArgs: args,
+            options: spawnOptions,
+            status: 'running',
+            startTime: new Date(),
+            logs: [],
+            exitCode: null,
+            error: null
+          };
 
-            console.log(`应用启动成功，PID: ${pid}`);
+          // 存储进程信息（使用PID作为key）
+          this.processes.set(pid, processInfo);
 
-            resolve({
-              success: true,
-              pid: pid,
-              command: command,
-              startTime: processInfo.startTime
-            });
+          // 设置事件监听
+          this.setupProcessEventListeners(pid, childProcess);
 
-          } else {
-            // 如果PID还未分配，稍后重试
-            setTimeout(waitForPid, 10);
-          }
-        };
+          console.log(`应用启动成功，PID: ${pid}`);
 
-        // 开始等待PID
-        waitForPid();
+          resolve({
+            success: true,
+            pid: pid,
+            command: command,
+            startTime: processInfo.startTime
+          });
+        }).catch((error) => {
+          reject({
+            success: false,
+            error: `获取进程PID失败: ${error.message}`,
+            command: command
+          });
+        });
 
         // 进程错误处理
         childProcess.on('error', (error) => {
