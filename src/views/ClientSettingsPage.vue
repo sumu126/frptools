@@ -228,12 +228,16 @@ export default {
         
         if (data.error) {
           this.startError = data.message;
-          // 错误时自动关闭进度显示
+          // 错误时显示通知并自动关闭进度显示
+          this.showNotification('隧道启动失败', data.message, 'error');
           setTimeout(() => {
             this.resetStartProgress();
           }, 3000);
         } else if (data.progress === 100) {
-          // 完成时自动关闭进度显示
+          // 完成时显示通知并自动关闭进度显示
+          const tunnel = this.tunnels.find(t => t.id === this.startingTunnelId);
+          const tunnelName = tunnel ? tunnel.name : '隧道';
+          this.showNotification('隧道启动成功', `隧道"${tunnelName}"已启动`, 'success');
           setTimeout(() => {
             this.resetStartProgress();
             this.loadTunnels(); // 刷新隧道列表

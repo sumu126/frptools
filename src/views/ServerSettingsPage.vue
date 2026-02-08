@@ -6,6 +6,23 @@
         <i class="fas fa-plus"></i> 添加配置
       </button>
     </div>
+    
+    <!-- 启动进度提示 -->
+    <div v-if="startingConfigId" class="start-progress-overlay">
+      <div class="start-progress-content">
+        <div class="progress-header">
+          <h3>正在启动FRPS服务</h3>
+          <span class="progress-close" @click="cancelStartProgress">×</span>
+        </div>
+        <div class="progress-body">
+          <div class="progress-bar-container">
+            <div class="progress-bar" :style="{ width: startProgress + '%' }"></div>
+          </div>
+          <div class="progress-text">{{ startProgressMessage }}</div>
+          <div v-if="startError" class="progress-error">{{ startError }}</div>
+        </div>
+      </div>
+    </div>
 
     <div class="configs-list">
       <div v-for="config in configs" :key="config.id" class="config-card">
@@ -215,13 +232,81 @@ export default {
         dashboardPort: 7500,
         dashboardUser: 'admin',
         dashboardPassword: 'admin'
-      }
+      },
+      // 启动进度相关数据
+      startingConfigId: null,
+      startProgress: 0,
+      startProgressMessage: '',
+      startError: null
     }
   },
   mounted() {
     this.loadConfigs()
+    
+    // 监听FRPS服务启动进度事件
+    window.electronAPI?.onFrpsStartProgress((event, data) => {
+      console.log('收到FRPS服务启动进度:', data);
+      this.handleFrpsStartProgress(data);
+    });
+  },
+  
+  beforeUnmount() {
+    // 移除事件监听器，避免内存泄漏
+    window.electronAPI?.removeFrpsStartProgressListener?.();
   },
   methods: {
+    // 处理FRPS服务启动进度
+    handleFrpsStartProgress(data) {
+      if (data.configId === this.startingConfigId) {
+        this.startProgress = data.progress;
+        this.startProgressMessage = data.message;
+        
+        if (data.error) {
+          this.startError = data.message;
+          // 错误时显示通知并自动关闭进度显示
+          this.showNotification('服务启动失败', data.message, 'error');
+          setTimeout(() => {
+            this.resetStartProgress();
+          }, 3000);
+        } else if (data.progress === 100) {
+          // 完成时显示通知并自动关闭进度显示
+          const config = this.configs.find(c => c.id === this.startingConfigId);
+          const configName = config ? config.name : '服务';
+          this.showNotification('服务启动成功', `FRPS服务"${configName}"已启动`, 'success');
+          setTimeout(() => {
+            this.resetStartProgress();
+            this.loadConfigs(); // 刷新配置列表
+          }, 1000);
+        }
+      }
+    },
+    
+    // 重置启动进度状态
+    resetStartProgress() {
+      this.startingConfigId = null;
+      this.startProgress = 0;
+      this.startProgressMessage = '';
+      this.startError = null;
+    },
+    
+    // 取消启动进度显示
+    cancelStartProgress() {
+      this.resetStartProgress();
+    },
+    
+    // 显示通知的通用方法
+    showNotification(title, message, type = 'info') {
+      // 使用Element Plus的通知组件，添加偏移量避免与头部重合
+      this.$notify({
+        title: title,
+        message: message,
+        type: type,
+        duration: 3000,
+        position: 'top-right',
+        offset: 40 
+      })
+    },
+    
     async loadConfigs() {
       try {
         this.configs = await window.electronAPI.frpsConfig.getAll()
@@ -380,13 +465,20 @@ export default {
 
     async startConfig(configId) {
       try {
+        // 显示启动进度
+        this.startingConfigId = configId;
+        this.startProgress = 0;
+        this.startProgressMessage = '正在启动FRPS服务...';
+        this.startError = null;
+        
         const result = await window.electronAPI.frpsConfig.start(configId)
         if (result.success) {
-          this.showNotification('启动成功', `配置"${result.config.name}"已启动`, 'success')
-          await this.loadConfigs()
+          // 进度会在handleFrpsStartProgress中自动更新
+          // 完成时自动关闭进度显示并刷新列表
         }
       } catch (error) {
         this.showNotification('启动失败', error.message, 'error')
+        this.startError = error.message;
       }
     },
 
@@ -922,6 +1014,120 @@ input:checked + .slider:before {
   
   .modal-footer button {
     width: 100%;
+  }
+}
+
+/* 启动进度显示样式 */
+.start-progress-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.3s ease;
+}
+
+.start-progress-content {
+  background: white;
+  border-radius: 12px;
+  padding: 0;
+  width: 400px;
+  max-width: 90vw;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  animation: slideUp 0.3s ease;
+}
+
+.progress-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid #f0f0f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.progress-header h3 {
+  margin: 0;
+  color: #2c3e50;
+  font-size: 1.25em;
+  font-weight: 600;
+}
+
+.progress-close {
+  background: none;
+  border: none;
+  font-size: 1.75em;
+  cursor: pointer;
+  color: #95a5a6;
+  padding: 4px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  line-height: 1;
+  height: 32px;
+  width: 32px;
+}
+
+.progress-close:hover {
+  background: #f8f9fa;
+  color: #e74c3c;
+}
+
+.progress-body {
+  padding: 24px;
+}
+
+.progress-bar-container {
+  background: #f0f0f0;
+  border-radius: 10px;
+  height: 8px;
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+
+.progress-bar {
+  background: linear-gradient(90deg, #3498db, #2ecc71);
+  height: 100%;
+  border-radius: 10px;
+  transition: width 0.3s ease;
+}
+
+.progress-text {
+  text-align: center;
+  color: #7f8c8d;
+  font-size: 0.95em;
+  margin-bottom: 8px;
+}
+
+.progress-error {
+  text-align: center;
+  color: #e74c3c;
+  font-size: 0.9em;
+  background: #ffeaea;
+  padding: 8px 12px;
+  border-radius: 6px;
+  margin-top: 8px;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 </style>

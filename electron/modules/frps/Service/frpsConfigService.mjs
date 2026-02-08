@@ -1,6 +1,6 @@
 import Store from 'electron-store';
 import path from 'path';
-import { app } from 'electron';
+import { app, BrowserWindow } from 'electron';
 import fs from 'fs';
 import UniversalProcessManager from '../../UniversalProcessManager/utils/UniversalProcessManager.mjs';
 
@@ -70,9 +70,9 @@ function getFrpsPath() {
  * 生成frps配置文件内容并保存到文件
  * @param {Object} config 配置对象
  * @param {number} configId 配置ID
- * @returns {string} frps配置文件路径
+ * @returns {Promise<string>} frps配置文件路径
  */
-function generateFrpsConfig(config, configId) {
+async function generateFrpsConfig(config, configId) {
   // 将配置内容转换为TOML格式
   const configContent = config.tomlContent;
   
@@ -83,13 +83,51 @@ function generateFrpsConfig(config, configId) {
   // 生成配置文件路径
   const configPath = path.join(frpsDir, `frps_${configId}.toml`);
   
-  // 如果配置文件已存在，先删除
-  if (fs.existsSync(configPath)) {
-    fs.unlinkSync(configPath);
+  try {
+    // 异步检查文件是否存在并删除
+    if (await fs.promises.access(configPath).then(() => true).catch(() => false)) {
+      await fs.promises.unlink(configPath);
+    }
+    
+    // 异步写入配置文件
+    await fs.promises.writeFile(configPath, configContent, 'utf8');
+    
+    return configPath;
+  } catch (error) {
+    console.error(`生成FRPS配置文件失败 (配置 ${configId}):`, error);
+    throw error;
+  }
+}
+
+/**
+ * 配置文件缓存，避免重复生成相同配置
+ */
+const frpsConfigCache = new Map();
+
+/**
+ * 生成配置文件的缓存版本
+ * @param {Object} config 配置对象
+ * @param {number} configId 配置ID
+ * @returns {Promise<string>} frps配置文件路径
+ */
+async function generateFrpsConfigCached(config, configId) {
+  const cacheKey = `${configId}_${config.tomlContent}`;
+  
+  // 检查缓存
+  if (frpsConfigCache.has(cacheKey)) {
+    const cachedPath = frpsConfigCache.get(cacheKey);
+    // 检查缓存文件是否仍然存在
+    if (await fs.promises.access(cachedPath).then(() => true).catch(() => false)) {
+      return cachedPath;
+    } else {
+      // 文件不存在，清除缓存
+      frpsConfigCache.delete(cacheKey);
+    }
   }
   
-  // 将配置写入文件
-  fs.writeFileSync(configPath, configContent, 'utf8');
+  // 生成新配置并缓存
+  const configPath = await generateFrpsConfig(config, configId);
+  frpsConfigCache.set(cacheKey, configPath);
   
   return configPath;
 }
@@ -315,6 +353,25 @@ class FrpsConfigService {
   }
   
   /**
+   * 向所有窗口发送IPC消息
+   * @param {string} channel 消息通道
+   * @param {any} data 消息数据
+   */
+  sendToAllWindows(channel, data) {
+    try {
+      // 使用顶层导入的BrowserWindow
+      const windows = BrowserWindow.getAllWindows();
+      windows.forEach(window => {
+        if (window && !window.isDestroyed()) {
+          window.webContents.send(channel, data);
+        }
+      });
+    } catch (error) {
+      console.error('发送窗口消息失败:', error);
+    }
+  }
+
+  /**
    * 启动FRPS服务
    * @param {number} id 配置ID
    * @returns {Promise<Object>} 操作结果
@@ -330,10 +387,24 @@ class FrpsConfigService {
         throw new Error(`FRPS配置 ${id} 已在运行中`);
       }
 
-      // 生成配置文件并获取路径
-      const configPath = this.generateFrpsConfig(config);
+      // 发送启动进度通知
+      this.sendToAllWindows('frps:start-progress', {
+        configId: id,
+        progress: 10,
+        message: '正在准备配置文件...'
+      });
+
+      // 生成配置文件并获取路径（使用缓存版本）
+      const configPath = await generateFrpsConfigCached(config, id);
+      
+      this.sendToAllWindows('frps:start-progress', {
+        configId: id,
+        progress: 30,
+        message: '配置文件生成完成，正在启动服务...'
+      });
+      
       // 获取frps可执行文件路径
-      const frpsPath = this.getFrpsPath();
+      const frpsPath = getFrpsPath();
       
       console.log(`启动FRPS服务 ${id}:`, {
         configPath,
@@ -344,6 +415,12 @@ class FrpsConfigService {
       // 启动frps进程，使用-c参数传入配置文件路径
       const result = await manager.startApplication(frpsPath, ['-c', configPath], {
         windowsHide: true
+      });
+
+      this.sendToAllWindows('frps:start-progress', {
+        configId: id,
+        progress: 70,
+        message: '服务进程启动成功，正在初始化...'
       });
 
       if (!result.success) {
@@ -379,6 +456,12 @@ class FrpsConfigService {
       
       storeManager.set(this.configsKey, configs);
       
+      this.sendToAllWindows('frps:start-progress', {
+        configId: id,
+        progress: 100,
+        message: 'FRPS服务启动完成'
+      });
+      
       return { 
         success: true, 
         config: configs[index],
@@ -387,6 +470,14 @@ class FrpsConfigService {
       };
     } catch (error) {
       console.error(`启动FRPS配置 ${id} 失败:`, error);
+      
+      // 发送错误通知
+      this.sendToAllWindows('frps:start-progress', {
+        configId: id,
+        progress: -1,
+        message: `启动失败: ${error.message}`,
+        error: true
+      });
       
       // 添加错误日志
       const logs = frpsLogsMap.get(id) || [];

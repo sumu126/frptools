@@ -34,6 +34,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   removeTunnelStartProgressListener: () => ipcRenderer.removeAllListeners('tunnel:start-progress'),
   
+  // FRPS服务启动进度事件
+  onFrpsStartProgress: (callback) => {
+    const listener = (event, data) => callback(event, data);
+    ipcRenderer.on('frps:start-progress', listener);
+    return listener;
+  },
+  removeFrpsStartProgressListener: () => ipcRenderer.removeAllListeners('frps:start-progress'),
+  
   // 隧道管理
     tunnel: {
       getAll: () => ipcRenderer.invoke('tunnel:getAll'),
